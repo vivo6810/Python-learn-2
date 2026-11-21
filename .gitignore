@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+.DS_Store
+*.log
+.env*.local
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Source material: never committed, never served.
+source-pdfs/
+content/_drafts/
+/freebuff-sites-build/
+/.open-next/
+/.wrangler/
