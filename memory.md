@@ -198,6 +198,68 @@ material is never committed, never served, and never mentioned anywhere in the p
 - In-browser exercises, and a compile-time search that also covers body text rather than titles,
   headings, and openings.
 
+### 2026-11-21 — Next.js 16 upgrade and Workers build fix
+
+**Changed**
+
+- `next` 15.5.29 → 16.4.6. The Sites build stopped at the first step because Next 15 is past its
+  two-year support window and the Workers build refuses unsupported versions; 16.4.6 is a version
+  `@opennextjs/cloudflare` 1.20.12 supports (`>=16.4.1`). `package-lock.json` follows.
+- Next 16 reconfigured `tsconfig.json` on the first build (`jsx: react-jsx`, `.next/dev/types`
+  added to `include`); the app already awaited `params`, so no page code needed changing for the
+  major bump.
+- Both dynamic routes now export `dynamicParams = false`. Without it a mistyped course URL was
+  rendered on demand inside the Worker, where `lib/content.ts` cannot read `content/tracks` — the
+  request failed with a 500 and an `ENOENT ... /bundle/content/tracks` log. All 24 routes are
+  generated at build time, so anything else is now a plain 404.
+
+**Verified**
+
+- `npm run build` passes on Next 16 (Turbopack): home static, 20 chapters and 2 part pages
+  prerendered.
+- `sites_prepare_next` completes with the OpenNext adapter; the built Worker runs under
+  `wrangler dev`: `/`, `/tracks/foundations`, `/tracks/automation`, the Dictionaries and PDF
+  chapters return 200 with correct titles, CSS is served as `text/css`, and an unknown chapter URL
+  returns 404 after the `dynamicParams` change.
+- The Files-style 404 fallback was re-checked only through the Worker; the deployed preview has not
+  been visited yet.
+
+**Next step**
+
+- Deploy the prepared build to the Sites preview and open it in a browser.
+
+### 2026-11-21 — Next.js 16, deeper chapters, no scroll label
+
+**Changed**
+
+- `next` 15.5.29 → 16.4.6, the first version the Workers adapter (`@opennextjs/cloudflare` 1.20.12)
+  accepts. Next 15 is past its support window, so the Sites build refused it before compiling.
+  Next 16 reconfigured `tsconfig.json` (`jsx: react-jsx`, `.next/dev/types`); no page code needed
+  changing because `params` was already awaited.
+- Both dynamic routes export `dynamicParams = false`. Without it a mistyped course URL was rendered
+  on demand inside the Worker, which cannot read `content/tracks`, and returned 500. Every route is
+  generated at build time, so anything else is now a 404.
+- Every chapter gained two closing sections before its exercises: "Doubts worth settling" (six or
+  seven questions that are specific to that chapter, each answered in plain terms) and "A slow read
+  of one script" (a short, realistic script followed by a line-by-line explanation). The chapters
+  now total 40,342 words, from 33,044; the smallest chapter is 1,959 and the largest 2,908.
+- The landing hero no longer shows the "Scroll" label or the animated drip line beside it. Both the
+  markup and the `.hero__scroll` / `@keyframes drip` styles were removed; the start button is now the
+  only item in the hero foot.
+
+**Verified**
+
+- `npm run build` passes on Next 16 (Turbopack): home and 404 static, 20 chapters and 2 part pages
+  prerendered.
+- `sites_prepare_next` completes; the built Worker under `wrangler dev` serves `/`, both part pages
+  and sample chapters with 200 and correct titles, CSS as `text/css`, and 404 for an unknown chapter.
+- Word counts and the removed hero label were checked with `wc -w` and by reading the rendered home
+  page markup; the deployed preview has not been visited.
+
+**Next step**
+
+- Deploy the prepared build to the Sites preview and open it in a browser.
+
 ## Where things live
 
 | Path | Meaning |

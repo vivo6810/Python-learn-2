@@ -330,6 +330,55 @@ It is a convenience, not an authority: it will also invent a date from `"2024"` 
 
 Two habits prevent most of this. Accept ISO 8601 in anything you design, and store timestamps as ISO strings with an offset or as Unix seconds. Both sort correctly as text or numbers, both survive a trip through JSON, and neither needs a format string to be read back.
 
+## Doubts worth settling
+
+**Is `datetime.now()` timezone-aware?** No, it is naive: it holds a wall-clock reading with no
+zone attached. `datetime.now(timezone.utc)` is aware. Mixing the two raises `TypeError` when you
+subtract them, which is Python refusing to guess where you are.
+
+**Why does subtracting two dates give a strange number?** Because a `timedelta` stores days,
+seconds, and microseconds, not just days. Use `.total_seconds()` for a float, or `.days` when you
+only care about whole days. `timedelta(days=1) * 3` is three days, and `str()` formats it for print.
+
+**What is `strftime` versus `strptime`?** `f` is format: date to text. `p` is parse: text to date.
+The memory aid is that `strftime` produces a string, `strptime` needs one. Both use the same `%`
+codes, so a mistake in one usually shows up in the other.
+
+**How do I stop `strptime` guessing the wrong day from `03/04/2026`?** You cannot — the format is
+ambiguous. Parse with the format you know, and if input is human, try a list of formats in order and
+reject what does not fit. Never let a silent guess reorder month and day.
+
+**Do I need a library for time zones?** Python 3.9+ ships `zoneinfo`, which uses the system's time
+zone data. For a fixed offset, `timezone(timedelta(hours=2))` is enough. For anything with daylight
+saving rules, use a named zone such as `ZoneInfo("Europe/Oslo")` — an offset cannot know about
+summer.
+
+**Why do timestamps sort badly in files?** Human formats mix widths and month names. Store ISO 8601
+— `2026-03-04T09:15:00+01:00` — and the text sorts chronologically as well as parses cleanly.
+
+**Why does my stopwatch drift?** Because `time.sleep` only guarantees a minimum. Measure elapsed
+time with `time.perf_counter()` and sleep the difference to the next target, rather than adding a
+fixed delay each pass.
+
+## A slow read of one script
+
+```python
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+
+start = datetime(2026, 3, 4, 9, 15, tzinfo=ZoneInfo("Europe/Oslo"))
+review = start + timedelta(days=30)
+print(review.isoformat())
+print((review - start).days, "days")
+print(start.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
+```
+
+Attaching the zone at construction means every later operation knows what the clock meant. Adding
+`timedelta(days=30)` is calendar arithmetic that keeps the local time of day, which is usually what
+a deadline means. `isoformat()` is the format to store, because it keeps the offset. `astimezone`
+converts the same instant for display without changing it, and the final `strftime` labels the zone
+so nobody has to guess.
+
 ## Practice questions
 
 - Why store an instant as `time.time()` rather than as a formatted string?

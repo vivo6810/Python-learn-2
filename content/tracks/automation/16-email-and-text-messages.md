@@ -249,6 +249,58 @@ Test with a seed list of real addresses across providers before a real send. Ope
 
 For anything beyond a personal script, a transactional email service exists precisely because this section is short and the reality is not. It handles authentication, reputation, bounces, and rate limits, and gives you an API instead of an SMTP conversation.
 
+## Doubts worth settling
+
+**Is sending mail the same as delivering it?** No. A successful `smtplib` call means a server
+accepted the message. Delivery depends on the recipient's server, spam filters, and DNS records.
+Check the `250` reply, keep the server's response, and do not promise anyone their mail arrived.
+
+**Why do my messages land in spam?** Missing SPF, DKIM, and DMARC records, a mismatched From
+address, a link-heavy body, and sending to strangers all contribute. Send through your provider's
+SMTP with a verified From, keep content plain, and never buy a list.
+
+**What is the difference between `To`, `Cc`, and `Bcc`?** Everyone sees `To` and `Cc`; nobody sees
+`Bcc`. That makes `Bcc` the correct way to mail a group, and the wrong way to hide who else got it
+while replying to the visible list.
+
+**Why does the body look like one long paragraph?** Because plain text ignores newlines unless the
+client is generous. Use `\n` plus blank lines between paragraphs, or send `MIMEText(body, "html")`
+with real markup — and always include a plain-text alternative for people and filters that want it.
+
+**Why does IMAP search return messages that do not match?** Search runs on the server and its
+syntax differs from desktop clients. Quote strings, use `SINCE 01-Mar-2026`, and treat the result as
+candidates: fetch, then filter in Python where you control the rules.
+
+**How should I store credentials?** Never in code. Read them from environment variables or a keyring
+and keep the file out of version control. For Gmail and similar providers, an app password is
+needed when two-factor authentication is on, and a token should be revocable.
+
+## A slow read of one script
+
+```python
+import os, smtplib
+from email.message import EmailMessage
+
+message = EmailMessage()
+message["From"] = os.environ["MAIL_FROM"]
+message["To"] = "ana@example.com"
+message["Subject"] = "Weekly report"
+message.set_content("Three orders are waiting for review.\n")
+message.add_attachment(b"id,total\n1,42\n", maintype="text",
+                       subtype="csv", filename="orders.csv")
+
+with smtplib.SMTP(os.environ["SMTP_HOST"], 587) as server:
+    server.starttls()
+    server.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
+    server.send_message(message)
+```
+
+`EmailMessage` builds a well-formed message, headers included, so nothing has to be assembled by
+hand. Credentials come from the environment, which keeps them out of the repository. `starttls`
+encrypts before the password is sent — never log in over plain SMTP. The `with` block closes the
+connection cleanly even when sending fails. An attachment is bytes plus a filename; the CSV text is
+encoded for you, and the recipient gets a real file rather than a pasted table.
+
 ## Practice questions
 
 - What do `starttls()` and `login()` each do, and why does `ehlo()` appear twice?

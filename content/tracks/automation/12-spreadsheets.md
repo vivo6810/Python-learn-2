@@ -269,6 +269,56 @@ sheet.freeze_panes = "A2"
 
 Do not read a sheet twice to get both values and formulas — open the workbook once with `data_only=False` for editing, or once with `True` for reporting. Mixing the two in one workbook object gives inconsistent results, since the cache is loaded at open time.
 
+## Doubts worth settling
+
+**Why does a cell read as a number when I stored text?** Spreadsheets guess types from what you type.
+`0123` becomes `123`, and a date-looking string becomes a date. Store identifiers with an explicit
+text format in the sheet, and read every cell's `value` while treating `data_type` as a hint, not a
+promise.
+
+**Why does `max_row` include empty rows?** Because the sheet was once taller than it is now. Empty
+rows that were formatted still count. Filter as you read: skip rows where every cell is `None`, and
+derive the real width from the header row rather than `max_column`.
+
+**When should I use `read_only` and `write_only`?** `read_only=True` streams rows and is far lighter
+for a big sheet, but you cannot jump around or edit. `write_only=True` appends rows without holding
+the workbook in memory. Use them for anything over a few thousand rows and keep full mode for small
+edits.
+
+**Are formulas calculated by the library?** No. openpyxl writes the formula text; the spreadsheet
+program calculates it when opened. With `data_only=True` you read the last value Excel saved, which
+is `None` if the file was never opened and recalculated. Do not use a formula cell as your source of
+truth.
+
+**Why did my formatting vanish?** Because loading and saving with the default settings keeps
+styles, but creating a new workbook and copying values does not. Work from a copy of the original
+file when layout matters, and go cell by cell only for the values that change.
+
+**What about `.xls` files?** openpyxl reads `.xlsx` and `.xlsm` only. Old `.xls` needs `xlrd`, and
+CSV needs no library at all. Check the suffix before opening anything a person sent you.
+
+## A slow read of one script
+
+```python
+from openpyxl import load_workbook
+
+book = load_workbook("sales.xlsx", data_only=True)
+sheet = book["January"]
+header = [cell.value for cell in sheet[1]]
+rows = []
+for row in sheet.iter_rows(min_row=2, values_only=True):
+    if row[0] is None:
+        continue
+    rows.append(dict(zip(header, row)))
+print(len(rows), rows[0] if rows else None)
+```
+
+`data_only=True` reads saved values, so formulas come back as results or `None` — acceptable for
+reporting, not for editing. Reading the header once and zipping it with each row turns a positional
+tuple into named fields, so later code says `row["total"]` instead of `row[3]`. The `None` check
+skips the blank tail rows that inflate `max_row`. `iter_rows(values_only=True)` hands back plain
+values and is noticeably faster than touching cell objects one by one.
+
 ## Try it
 
 - Read a sheet of names and amounts, and print the total and the largest row.

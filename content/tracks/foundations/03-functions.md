@@ -264,6 +264,60 @@ Python does not check them at runtime; `average(["a"])` still fails at the divis
 
 A function's signature is its contract, so keep it honest. If a function needs six parameters, three of which are always passed together, that trio wants to be a dictionary or a small class. If a boolean parameter changes which half of the body runs, two functions would be clearer than one with a switch inside.
 
+## Doubts worth settling
+
+**What is the difference between a parameter and an argument?** The parameter is the name inside
+the `def`; the argument is the value you pass when calling. People use the words loosely and it
+rarely matters, but the distinction explains error messages that mention a missing argument.
+
+**Why does my function return `None`?** Because it never reached a `return`, or reached a bare
+`return`. Printing inside a function and returning a value are different acts. If the caller needs
+the result, return it and let the caller decide whether to print.
+
+**Why is a mutable default argument dangerous?** Defaults are created once, when the function is
+defined, not on each call:
+
+```python
+def add(item, basket=[]):      # one list, shared by every call
+    basket.append(item)
+    return basket
+```
+
+Call it twice and the second call still holds the first item. Use `basket=None`, then
+`basket = [] if basket is None else basket` inside the body.
+
+**Can a function change a variable outside it?** It can change a mutable object you pass in —
+append to a list and the caller sees it. It cannot rebind the caller's name: `x = 5` inside a
+function creates a local `x` and leaves the outer one alone. Returning the new value is clearer
+than reaching outward with `global`.
+
+**How many arguments is too many?** Past three, a reader loses track of the order at the call site.
+Group related values into a dictionary or a small class, or use keyword arguments so the call reads
+like a sentence: `send(to="ana", subject="Hi", body=text)`.
+
+**Does the order of functions in a file matter?** At import time, yes — a function must be defined
+before it is called at module level. Inside another function's body it does not: the call happens
+later, when both names exist.
+
+## A slow read of one script
+
+```python
+def retry(action, times=3, pause=0.5):
+    for attempt in range(1, times + 1):
+        try:
+            return action()
+        except Exception as error:
+            print(f"attempt {attempt} failed: {error}")
+            time.sleep(pause)
+    return None
+```
+
+`action` is a function passed in, not a value, which is why the body calls it as `action()`. The
+default `times=3` and `pause=0.5` make the common case short to type, while a caller facing a slow
+server can pass `pause=5`. `return action()` stops the loop on the first success. If every attempt
+fails, the loop ends and the final `return None` gives the caller one predictable answer instead of
+an exception, which is a contract worth writing down in the docstring.
+
 ## Try it
 
 - Write `is_even(number)` that returns a boolean without printing anything.

@@ -270,6 +270,53 @@ A byte-order mark at the start of a file — common in exports from Windows soft
 
 `width` in formatting counts characters, not bytes, so `len("café")` is 4 while its UTF-8 form is 5 bytes. Text columns may still look ragged in a terminal because some characters are displayed two cells wide; for table output, that is a limitation to live with or a library to reach for.
 
+## Doubts worth settling
+
+**Why can't I change one character?** Strings are immutable. `name[0] = "A"` raises `TypeError`
+because the value cannot be edited in place. Build a new string instead:
+`name = "A" + name[1:]`, or use `name.replace(...)` and keep the result.
+
+**Do string methods change the original?** No. `text.strip()` returns a new string; it does not
+alter `text`. Writing `text.strip()` on its own line does nothing useful. Assign it:
+`text = text.strip()`.
+
+**Why does `split()` differ from `split(",")`?** With no argument, any run of whitespace separates
+fields and empty pieces disappear. With an explicit separator, each separator counts:
+`"a,,b".split(",")` gives `['a', '', 'b']`, which is usually what a CSV line needs — and why blank
+fields must be handled, not ignored.
+
+**How do I put a brace inside an f-string?** Double it: `f"{{literal}}"` prints `{literal}`. A
+single brace starts an expression, which is the source of the `SyntaxError` people hit when
+formatting JSON by hand.
+
+**Why is `len()` smaller than the characters I see?** `len` counts code points. An emoji with skin
+tone or a flag is several of them, and an accented letter may be one or two depending on how it was
+written. For display width you need a library; for validation, count what you actually mean.
+
+**What is the difference between `"a" + "b"` and `" ".join(["a", "b"])`?** For two strings they are
+equal. In a loop, `join` is the right choice: `+` builds a new string on every pass, so a thousand
+concatenations copy the growing text a thousand times.
+
+**Why does comparing text fail for user input?** `input` keeps whatever case and spaces the person
+typed. Normalise both sides before comparing: `answer.strip().lower() == "yes"`. Do not normalise
+the value you store, only the copy you compare.
+
+## A slow read of one script
+
+```python
+raw = "  Ana Lucia ,  Oslo ,NORWAY "
+parts = [part.strip() for part in raw.split(",")]
+name, city, country = parts
+print(f"{name.title()} ({city}) — {country.upper()}")
+```
+
+The split happens first, so each field can be cleaned separately; stripping before splitting would
+leave the inner spaces untouched. The comprehension keeps the cleaning next to the splitting, which
+is easier to read than a separate loop. Unpacking into three names documents the expected shape and
+fails immediately if the line has four fields — a good failure, because the alternative is silently
+using the wrong value. `title()` and `upper()` are applied only for display; the cleaned original
+stays available for matching.
+
 ## Try it
 
 - Take a sentence, strip it, title-case it, and print it with the words reversed.

@@ -268,6 +268,58 @@ print(Counter(row["city"] for row in rows).most_common())
 
 That generator expression is the pattern to remember: feed `Counter` the thing you want counted, not the container it lives in.
 
+## Doubts worth settling
+
+**`KeyError` or `get`?** Indexing says the key must exist and fails loudly if it does not. `get`
+says a missing key is normal and returns `None` or your fallback. Use indexing when a missing key
+means the data is wrong; use `get` when absence is an expected case.
+
+**Does `{}.get("a", [])` create the list once?** It creates a new empty list on every call. That is
+why `inventory[key].append(item)` on a missing key fails, and why `setdefault(key, []).append(item)`
+works — `setdefault` stores the new list the first time and returns the stored one afterwards.
+
+**Can a list be a key?** No. Keys must be hashable, meaning their value cannot change; numbers,
+strings, and tuples qualify, lists and dictionaries do not. If you need a compound key, use a tuple:
+`grid[(row, column)]`.
+
+**Is dictionary order guaranteed?** Yes, since Python 3.7 it keeps insertion order. Sorting is still
+your job: `for name in sorted(people):` gives alphabetical output regardless of how the file was
+written.
+
+**Why does my loop over a dictionary change size and crash?** Adding or deleting keys while
+iterating raises `RuntimeError: dictionary changed size during iteration`. Iterate over a copy,
+`for key in list(data):`, then change `data` freely.
+
+**Does `copy()` make a deep copy?** No, only the outer dictionary. Nested dictionaries are still
+shared, so editing `copy["address"]["city"]` edits the original too. `copy.deepcopy` is the tool
+for that, or build the new structure explicitly.
+
+**What is the difference between `d.items()`, `d.keys()`, and `d.values()`?** They are views, not
+copies: cheap, live, and iterable. `items()` yields `(key, value)` pairs, which is what you want in
+most loops; wrap any of them in `list(...)` only when you need a snapshot.
+
+## A slow read of one script
+
+```python
+stock = {"nails": 4, "screws": 10}
+deliveries = [("nails", 6), ("bolts", 3), ("screws", -2)]
+
+for name, count in deliveries:
+    stock[name] = stock.get(name, 0) + count
+
+for name in sorted(stock):
+    if stock[name] <= 0:
+        print(f"reorder {name}")
+    else:
+        print(f"{name}: {stock[name]}")
+```
+
+The loop never checks whether a name exists. `stock.get(name, 0)` supplies zero for the first
+delivery of an unseen part, so `bolts` appears without an `if name not in stock` branch. Negative
+deliveries subtract, because the same line adds whatever number it is given. Sorting the keys before
+printing makes output stable across runs, which matters the moment you compare two reports or
+diff a file.
+
 ## Try it
 
 - Count how many times each letter appears in a sentence, ignoring spaces.

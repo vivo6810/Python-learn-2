@@ -306,6 +306,51 @@ print(sorted(people, key=lambda person: (-person[1], person[0])))
 
 Negating a number is the quick way to reverse one field while keeping the rest ascending. Add `reverse=True` only when every field should flip.
 
+## Doubts worth settling
+
+**Why did changing one list change the other?** Because there is only one list. `b = a` copies the
+label, not the contents. For a real copy use `b = a[:]` or `b = list(a)`; for nested lists use
+`copy.deepcopy(a)`, since a shallow copy still shares the inner lists.
+
+**Does slicing ever fail?** Almost never, and that is the feature. `items[10:20]` on a three-item
+list returns `[]` instead of raising, so loops that walk in chunks need no bounds check. Indexing
+does fail: `items[10]` is an `IndexError`.
+
+**Why does `for item in items: items.remove(item)` skip things?** The loop counts positions while
+`remove` shifts everything left, so the next element moves into the position you just finished.
+Build a new list instead: `kept = [x for x in items if keep(x)]`.
+
+**When do I use `sort` and when `sorted`?** `items.sort()` reorders in place and returns `None`;
+`sorted(items)` returns a new list. `sorted` also accepts any iterable, which is why it works on a
+dictionary's keys. Assigning `items = items.sort()` is a classic bug: it stores `None`.
+
+**Are lists and tuples interchangeable?** A tuple cannot change, so it can be used as a dictionary
+key and safely shared. Use a tuple for a fixed record such as `(latitude, longitude)` and a list
+for a collection you will add to.
+
+**Is `x in items` fast?** It scans from the start, so it costs more as the list grows. A set
+answers the same question in roughly constant time. Below a few hundred items it does not matter;
+inside a loop over thousands it does.
+
+## A slow read of one script
+
+```python
+prices = [2.5, 4.0, 1.75]
+quantities = [3, 1, 4]
+total = 0
+for price, quantity in zip(prices, quantities):
+    line = price * quantity
+    total += line
+    print(f"{quantity} x {price:.2f} = {line:.2f}")
+print(f"Total: {total:.2f}")
+```
+
+`zip` pairs the lists position by position and stops at the shorter one, so two lists of different
+lengths do not raise — they quietly lose data, which is worth a length check in real code. The loop
+unpacks each pair into two names, which reads better than `prices[i]`. The running total starts at
+zero outside the loop and is updated inside; declaring it inside would reset it each pass. Format
+specifiers keep money at two decimals, because `0.1 + 0.2` in floating point is not exactly `0.3`.
+
 ## Try it
 
 - Build a list of five names, print it in reverse without changing it, then sort it in place.

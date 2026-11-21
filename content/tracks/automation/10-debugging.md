@@ -254,6 +254,53 @@ Read `cumtime` first: it is the total time spent in a function including what it
 
 The most common result of profiling is that the program is waiting, not computing: a network call inside a loop, a file opened and closed repeatedly, a database query per row. No amount of rewriting the inner arithmetic fixes a round trip. Move the I/O out of the loop and the numbers change by an order of magnitude.
 
+## Doubts worth settling
+
+**Where do I start with a traceback?** At the bottom. The last line names the error and often the
+cause; the line above it is the exact statement that failed, and the frames above that are the path
+that got you there. Read upward only as far as your own code.
+
+**What is the difference between an exception and a bug?** An exception is Python telling you
+something failed in a defined way — you can catch it. A bug is your program doing something wrong
+happily. Catching an exception you do not understand hides bugs; print it first, decide later.
+
+**Why does the error appear somewhere else?** Because a value went bad earlier and only crashed at
+use. Print or assert the value where it is created, then follow it. Assertions document what must
+be true: `assert len(rows) > 0, "no rows parsed"`.
+
+**What does `breakpoint()` do?** It drops you into `pdb` at that line: `p` prints a value, `n` runs
+the next line, `s` steps into a call, `c` continues. It is faster than ten prints and leaves nothing
+behind when you delete the line.
+
+**Do I need `try` around everything?** No. Let errors surface while developing; catch them where
+you can actually do something — retry, use a default, report to the user. A bare `except:` that
+swallows everything is how a silent failure becomes a mystery.
+
+**Why is my log empty?** Because the script wrote to stderr, or because buffering held the output.
+Check both streams, and flush when the process may be killed: `print(..., flush=True)`.
+
+## A slow read of one script
+
+```python
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+rows = []
+for number, line in enumerate(open("data.csv", encoding="utf-8"), start=1):
+    parts = line.strip().split(",")
+    if len(parts) != 3:
+        logging.warning("line %s has %s fields", number, len(parts))
+        continue
+    rows.append(parts)
+logging.info("kept %s rows", len(rows))
+```
+
+Logging replaces scattered prints with levels you can switch off. The warning names the line number
+and the count, which is what you need when a file misbehaves at row 4,102. Skipping the bad row and
+continuing is a policy decision; collecting them into a list of problems is the better one when the
+report matters. Logging with `%s` and arguments rather than an f-string keeps formatting deferred
+and the output cheap when the level is disabled.
+
 ## Try it
 
 - Break a working script on purpose in three different ways and read each traceback aloud before fixing it.

@@ -324,6 +324,53 @@ This site's images are not the place to be clever: pick one format per kind of i
 
 `dpi` and `exif` are metadata, not pixels. Setting `dpi=(300, 300)` tells a printer how to size the image and does not add detail; passing `exif=image.info.get("exif")` keeps the camera data through a rotate, which is why a phone photo comes back the right way up in other software after you have edited it.
 
+## Doubts worth settling
+
+**Why did saving as JPEG turn my transparent logo black?** JPEG has no alpha channel, so transparent
+pixels have no colour to keep and often become black or white. Use PNG or WebP when transparency
+matters, and convert to RGB deliberately — with a chosen background colour — when it does not.
+
+**Does resizing make a file smaller?** Usually, but the format matters more. A full-resolution photo
+saved at quality 60 is often smaller than a half-size one at quality 95. Resize to the pixels the
+screen needs, then choose the quality, and compare file sizes rather than assuming.
+
+**What is the difference between `resize` and `thumbnail`?** `resize` does exactly what you ask,
+even if it stretches the image. `thumbnail` keeps the aspect ratio and fits within the box. For
+galleries, `thumbnail` is almost always what you meant.
+
+**Why does `rotate(90)` not work like my phone's rotate?** `rotate` turns the pixels; EXIF
+orientation is a tag that tells viewers how to turn them. Use `ImageOps.exif_transpose` first, or a
+photo may appear sideways only in some programs.
+
+**Do I always need to convert the mode?** Paste, alpha compositing, and some filters need both
+images in the same mode. `convert("RGBA")` before compositing avoids the `ValueError` that appears
+otherwise; convert back to `RGB` before saving as JPEG.
+
+**Why does my text look ragged?** The default bitmap font is tiny. Load a TrueType font at the size
+you need, and anchor the text properly — `anchor="mm"` centres it, which is far easier than
+guessing offsets.
+
+## A slow read of one script
+
+```python
+from pathlib import Path
+from PIL import Image, ImageOps
+
+for path in sorted(Path("photos").glob("*.jpg")):
+    with Image.open(path) as image:
+        image = ImageOps.exif_transpose(image)
+        image.thumbnail((1200, 1200))
+        target = path.with_name(f"{path.stem}-web.jpg")
+        image.convert("RGB").save(target, quality=82, optimize=True)
+    print(path.name, "->", target.name, target.stat().st_size // 1024, "kB")
+```
+
+`with Image.open` closes the file handle promptly, which matters in a loop over hundreds of photos.
+`exif_transpose` applies the camera's orientation tag so the output matches what you saw.
+`thumbnail` never enlarges and keeps proportions. `convert("RGB")` is required because a CMYK or
+palette image cannot be written as JPEG directly. A new filename leaves the originals untouched, and
+printing the size turns quality choices into measurements instead of opinions.
+
 ## Practice questions
 
 - What do `size` and `mode` tell you, and which one changes when you save to JPEG?

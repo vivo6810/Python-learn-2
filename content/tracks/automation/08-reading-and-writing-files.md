@@ -303,6 +303,56 @@ print(path)   # e.g. /tmp/tmp8k2j1.csv, yours to move or delete
 
 Two rules make temporary files safe. Move the finished file into place with `os.replace()`, which is atomic on the same filesystem; and keep the temporary file in the destination directory, not in `/tmp`, so the move stays on one filesystem. `tempfile.mkstemp(dir=folder)` does exactly that, and it is the difference between a reader seeing the old report or the new one — never half of each.
 
+## Doubts worth settling
+
+**Where does a relative path point?** At the current working directory, which is the folder you
+started Python from, not the folder the script lives in. That is why the same script works in the
+editor and fails from a shortcut. Build paths from the script's own location:
+`Path(__file__).parent / "data.txt"`.
+
+**Why is my file empty after writing?** Because the write never reached the disk. Using `with`
+closes the file at the end of the block, and closing flushes. A file object opened without `with`
+and left unclosed can lose its buffer when the program ends abruptly.
+
+**What does `w` do to an existing file?** It empties it before writing. `a` appends, `x` refuses to
+overwrite, `r+` edits in place. Choosing the mode is choosing the risk; `x` is the safest default
+when you mean to create something new.
+
+**Why do I see `\n` twice or blank lines between rows?** On Windows, text mode translates `\n` to
+`\r\n`. Writing `\r\n` yourself in text mode produces `\r\r\n`. Write plain `\n` and let Python
+translate, or open with `newline=""` when you must control bytes exactly.
+
+**Is reading a whole file into memory fine?** For notes and configuration, yes. For a log that could
+be a gigabyte, iterate the file object instead: `for line in handle:` reads one line at a time, and
+the memory cost stays flat.
+
+**Why does `open` fail with `UnicodeDecodeError`?** The bytes are not UTF-8. Files from older
+systems are often `cp1252` or `latin-1`. Name the encoding explicitly — `encoding="utf-8"` on every
+open you write — and fall back to another encoding only after reading the error.
+
+## A slow read of one script
+
+```python
+from pathlib import Path
+
+folder = Path("notes")
+folder.mkdir(exist_ok=True)
+path = folder / "todo.txt"
+
+with path.open("a", encoding="utf-8") as handle:
+    handle.write("buy milk\n")
+
+with path.open(encoding="utf-8") as handle:
+    for number, line in enumerate(handle, start=1):
+        print(number, line.rstrip())
+```
+
+`mkdir(exist_ok=True)` makes the script safe to run twice. The `a` mode adds a line without erasing
+the list, and the explicit encoding means the file reads the same on every machine. The second block
+opens for reading with no mode argument, which defaults to `r`. `rstrip()` removes the trailing
+newline that would otherwise add a blank line to the output, and `enumerate(..., start=1)` numbers
+lines the way a person counts them.
+
 ## Try it
 
 - Write a script that copies every `.txt` file in a folder into a `backup` subfolder.

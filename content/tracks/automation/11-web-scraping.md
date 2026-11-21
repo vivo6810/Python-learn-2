@@ -296,6 +296,57 @@ That is a real browser, with the weight and fragility of one. Use it when there 
 
 Three checks before writing a scraper: does the site publish an API, does `robots.txt` allow the path, and do the terms forbid automated access. A request every second is a denial-of-service attack with polite intentions; a delay, a cache, and a limit on pages fetched are part of a working scraper, not extra credit.
 
+## Doubts worth settling
+
+**Why does `requests.get` return 403?** The site refused the request, often because the headers look
+like a script. Send a normal `User-Agent` first; if it still refuses, the site may require a login or
+forbid automation, and that is an answer, not a bug to defeat.
+
+**Why is the text I want missing from the HTML?** The page builds it with JavaScript after loading.
+`requests` only sees the first response. Either find the JSON endpoint the page calls — usually in
+the network panel — or use a browser driver. Prefer the endpoint: it is smaller, faster, and less
+likely to break.
+
+**What is the difference between `find` and `select`?** `find` takes a tag and attributes;
+`select` takes a CSS selector, which is usually shorter and familiar from styling:
+`soup.select("table.results tr")`. `select_one` returns the first match or `None`, so check before
+reading `.text`.
+
+**Why does `.text` include extra whitespace?** Because the markup has it. `clean = " ".join(node.text.split())`
+collapses runs of spaces and newlines in one line. Do it before comparing or storing.
+
+**How do I stay polite?** Read `robots.txt`, send an identifying `User-Agent`, keep concurrency
+low, cache pages while you build the parser, and stop when the site says to. One request per second
+is a common ceiling; a retry with a delay beats a fast loop that hammers a struggling server.
+
+**Why does the scraper break every few weeks?** Because the markup changed. Keep the parsing rules
+in one place, assert on the count you expect, and log the response when a selector returns nothing,
+so the next fix is a minute's work instead of an afternoon's.
+
+## A slow read of one script
+
+```python
+import time
+import requests
+from bs4 import BeautifulSoup
+
+page = requests.get("https://example.com/news", timeout=10,
+                    headers={"User-Agent": "pyflow-course/1.0"})
+page.raise_for_status()
+soup = BeautifulSoup(page.text, "html.parser")
+
+for item in soup.select("article h2 a")[:5]:
+    print(" ".join(item.get_text().split()), item["href"])
+    time.sleep(1)
+```
+
+The timeout keeps a hung connection from stalling the script forever. `raise_for_status` turns a
+404 or 500 into an exception instead of parsing an error page as if it were content. The selector
+follows structure — articles, then headings, then links — so it survives unrelated changes. `get_text`
+is used rather than `.text` so the whitespace collapse reads clearly. The pause applies between
+requests; on a single page it is harmless, in a loop it is the difference between welcome and
+blocked.
+
 ## Try it
 
 - Download a page and list every heading on it, in order.

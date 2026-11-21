@@ -387,6 +387,55 @@ Heading structure is worth reading before you write. `paragraph.style.name` tell
 
 Finally, save to a new path. `Document.save()` overwrites silently, and a bug in a replacement loop is much easier to see when the original is still there.
 
+## Doubts worth settling
+
+**Why is the extracted text in the wrong order?** A PDF stores text by position, not by reading
+order, so columns and tables interleave. `extract_text` follows the page's internal stream, which
+usually looks right for prose and often does not for layouts. Try `layout=True` in pdfplumber, or
+extract tables separately with `extract_tables`.
+
+**Why does a page return no text at all?** It is probably a scan — an image of words. No library can
+read text that is not there; that needs OCR, and OCR needs a clean, high-resolution page. Check
+`len(page.extract_text() or "")` before assuming the file is broken.
+
+**Can I edit a PDF with these tools?** Not really. `pypdf` can merge, split, rotate, and fill form
+fields, but it does not reflow paragraphs. Real edits mean rebuilding the document. Treat PDF as an
+output format and keep the source in something editable.
+
+**Why did my merged PDF lose its bookmarks?** Merging concatenates pages; outlines and links belong
+to the original structure. Copy them deliberately with `clone_document_from_reader` or rebuild them.
+Check the page count after every structural operation — the fastest way to catch a silent failure.
+
+**Why does a Word replacement leave the old text behind?** Because Word splits a sentence across
+runs for spell-check and formatting, so `"Total"` may live in two runs. Replace run by run first;
+when a match spans runs, join the paragraph text, replace, and write it back — accepting that
+formatting inside that paragraph may reset.
+
+**Is `python-docx` a layout tool?** No. It handles paragraphs, runs, tables, and styles — the
+document's structure. Anything depending on page breaks or exact positions is the word processor's
+job, and the result will differ on another machine.
+
+## A slow read of one script
+
+```python
+from pypdf import PdfReader, PdfWriter
+
+reader = PdfReader("report.pdf")
+writer = PdfWriter()
+for number, page in enumerate(reader.pages, start=1):
+    text = page.extract_text() or ""
+    if "Confidential" not in text:
+        writer.add_page(page)
+    else:
+        print(f"dropped page {number}")
+writer.write("public.pdf")
+```
+
+Pages are copied, not rebuilt, so the visual result is identical to the source. The `or ""` guard
+matters: `extract_text` returns `None` for image-only pages, and `in None` would raise. Testing for
+a marker word is a sample policy — a real filter would check a header region or metadata. Writing to
+a new file keeps the original intact, which is the habit that makes a bulk PDF script safe to rerun.
+
 ## Practice questions
 
 - Why does `extract_text()` sometimes return the columns of a page interleaved?

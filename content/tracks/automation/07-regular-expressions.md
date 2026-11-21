@@ -278,6 +278,52 @@ Two jobs should not be given to a regex. Validating an email address properly is
 
 Finally, print the pattern and the input side by side when it will not match. Most failures are an unescaped `.`, a missing `re.MULTILINE`, or a trailing newline that `$` does not allow for.
 
+## Doubts worth settling
+
+**Why does `re.match` fail on text that clearly contains the pattern?** `match` only looks at the
+start. Use `search` to look anywhere, or `findall` to collect every occurrence. `fullmatch` is the
+strict one: the whole string must fit the pattern.
+
+**When do I need a raw string?** Whenever the pattern contains a backslash. `"\d"` is a Python
+escape that happens to mean the same thing today; `r"\d"` says what you mean. `r"\bword\b"` is
+unambiguous where a normal string would turn `\b` into a backspace.
+
+**Why is my pattern matching too much?** Quantifiers are greedy by default, so `.*` runs to the end
+of the line and backtracks. A trailing `?` makes it lazy: `<b>.*?</b>` stops at the first closing
+tag. When a regex works on one line and fails on a paragraph, greed is usually the reason.
+
+**What does `re.escape` do?** It neutralises characters that have regex meaning, so you can build a
+pattern from user text such as a filename or a search phrase. Forgetting it is how a literal `+`
+becomes a quantifier.
+
+**Why do I get `None` instead of an error?** No match is not exceptional in `re` — `search` returns
+`None` and `group()` on `None` raises `AttributeError`. Check the result first:
+`if match := pattern.search(text):` then use `match.group()`.
+
+**Are groups numbered from zero?** Group 0 is the whole match; numbered groups start at 1, and
+named groups are clearer: `(?P<year>\d{4})` read back as `match.group("year")`. Named groups survive
+edits to the pattern, which numbered ones do not.
+
+## A slow read of one script
+
+```python
+import re
+
+line = "Order 4471 shipped 2026-03-04 to Oslo"
+pattern = re.compile(r"Order (?P<number>\d+).*?(?P<date>\d{4}-\d{2}-\d{2})")
+match = pattern.search(line)
+if match:
+    print(match.group("number"), match.group("date"))
+else:
+    print("no order")
+```
+
+Compiling once keeps the pattern readable and reusable. `\d+` takes as many digits as exist, so a
+five-digit order number works without changing anything. `.*?` is lazy so the date group is allowed
+to match the first date rather than the last. Naming both groups means the print line says what each
+value is, and a later added group cannot shift the numbering. The `if match` branch is the habit to
+build: `re` reports absence with `None`, not with an exception.
+
 ## Try it
 
 - Match every date written as `YYYY-MM-DD` in a block of text and print them one per line.

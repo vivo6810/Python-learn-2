@@ -310,6 +310,56 @@ A cleaning pass should be idempotent: running it on already-clean data changes n
 
 Finally, keep the raw file. Cleaned data is a claim about the original; when the numbers look wrong a week later, the original is the only way to tell whether the cleaning was at fault.
 
+## Doubts worth settling
+
+**Why does `csv.reader` split on commas inside quotes correctly?** Because it understands quoting
+rules, which `line.split(",")` does not. Always use the `csv` module for CSV — it handles quoted
+commas, doubled quotes, and embedded newlines that a manual split breaks on.
+
+**Why is every value a string?** CSV has no types. `"42"` and `42` look the same in the file. Convert
+explicitly with `int` or `float`, and decide what a blank cell means — zero, `None`, or a missing row
+— before you do arithmetic.
+
+**Does `DictWriter` need a header row?** Yes, and it writes it for you from `fieldnames`. The order
+in `fieldnames` is the column order in the file, so changing the list changes the output. Pass
+`extrasaction="ignore"` when a dictionary has keys you do not want written.
+
+**Why did a spreadsheet open my file with everything in one column?** Because the local delimiter is
+not a comma. `csv.writer` defaults to `,`; some regions expect `;`. Pass `delimiter=";"` on both
+write and read, or use `csv.Sniffer` when you must detect it.
+
+**What is the difference between `json.dump` and `json.dumps`?** `dump` writes to a file object,
+`dumps` returns a string. The `s` means string, not "safe". The same holds for `load` and `loads`.
+
+**Why does `json.load` fail on my hand-written file?** JSON is strict: double quotes only, no trailing
+commas, no comments. A single quote or a trailing comma makes it invalid. Validate while you write,
+and keep a copy before rewriting a file a person may have edited.
+
+**When is JSON the wrong choice?** For large tabular data, CSV is smaller and streams row by row.
+JSON is better for nested records and for anything another program will read — it keeps types and
+structure that CSV flattens.
+
+## A slow read of one script
+
+```python
+import csv, json
+from pathlib import Path
+
+rows = []
+with Path("orders.csv").open(newline="", encoding="utf-8") as handle:
+    for row in csv.DictReader(handle):
+        rows.append({"id": int(row["id"]), "total": float(row["total"] or 0)})
+
+Path("orders.json").write_text(json.dumps(rows, indent=2), encoding="utf-8")
+print(f"{len(rows)} orders, total {sum(r['total'] for r in rows):.2f}")
+```
+
+`newline=""` is required on Windows so the CSV module sees real line breaks instead of translated
+ones. `DictReader` uses the header row for names, which keeps the conversion readable. `or 0`
+handles the blank cell that would otherwise raise on `float("")`. `indent=2` makes the JSON
+reviewable in a diff, at the cost of a larger file. The summary sums a generator rather than building
+another list, so memory stays flat even for a large file.
+
 ## Try it
 
 - Read a CSV of names and email addresses, keep only addresses at one domain, and write them to a new file.

@@ -258,6 +258,63 @@ else:
 
 That `else` runs only when the loop never broke, which is exactly the "give up" branch you want.
 
+## Doubts worth settling
+
+**What counts as true?** Empty things are false: `0`, `0.0`, `""`, `[]`, `{}`, `None`, and `False`.
+Everything else is true, including the string `"False"` and the list `[0]`. That surprises people
+every time. When a condition feels wrong, print the value itself, not just the branch it took.
+
+**Why is `while` stuck forever?** Something inside the loop must move the condition toward false.
+If the loop body changes nothing the condition reads, the loop repeats exactly as before. Add a
+`print` of the counter at the top of the body once; if it never changes, you have found the bug.
+
+**Does `else` belong to `if` only?** No — `for` and `while` can have an `else` that runs only when
+the loop finishes without `break`. It is the clean way to say "searched everything, found nothing":
+
+```python
+for guess in guesses:
+    if guess == secret:
+        print("found")
+        break
+else:
+    print("not in the list")
+```
+
+**When should I use `break` instead of a flag?** A flag keeps the loop readable when there is work
+after the match; `break` stops immediately. Both are correct. The mistake is `break` inside a
+nested loop expecting it to leave both — it leaves only the inner one.
+
+**Why does comparing numbers to text fail silently?** `"10" < "9"` is true, because text is
+compared character by character and `"1"` comes before `"9"`. Convert with `int(...)` before
+comparing anything that came from a file or from `input`.
+
+**Is `range(1, 5)` one to five?** It is 1, 2, 3, 4. The stop value is never included, which is why
+`range(n)` pairs so neatly with indices `0 .. n-1`. For a countdown, step backwards:
+`range(5, 0, -1)`.
+
+## A slow read of one script
+
+```python
+attempts = 0
+while attempts < 3:
+    answer = input("Guess a number 1-10: ").strip()
+    if not answer.isdigit():
+        print("Digits only")
+        continue
+    if int(answer) == 7:
+        print("Right")
+        break
+    attempts += 1
+else:
+    print("Out of tries")
+```
+
+Read the guard clauses in order. The loop condition caps the tries. The `isdigit` check runs before
+`int`, so `int` can never see text it would choke on. `continue` skips the rest of the body, which
+keeps a bad entry from using up an attempt — decide deliberately whether it should. `break` exits
+when the guess is right, and because it does, the `else` is skipped. Only three wrong guesses reach
+the `else`, and that is the exact sentence a reader wants there.
+
 ## Try it
 
 - Print every number from 1 to 50 that is divisible by 3 but not by 5.

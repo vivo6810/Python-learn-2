@@ -276,6 +276,52 @@ print(f"{1234567:,}")     # 1,234,567
 
 Those format specifiers round and group at print time, leaving the stored value untouched — the right division of labour between arithmetic and presentation.
 
+## Doubts worth settling
+
+**Does `x = 5` mean x equals five?** No. It means the name `x` points at the number 5. A second
+`x = 7` does not change the 5, it moves the label. If something else was pointing at 5, it still
+is.
+
+**Why does `print("5")` show `5` while `print(5)` also shows `5`?** They look alike on screen but
+are different things. `"5"` is text, so `"5" + "5"` gives `"55"`. The number 5 is arithmetic, so
+`5 + 5` gives `10`. When a result puzzles you, check `type(...)` before anything else.
+
+**What is `None`?** The value that means "nothing here". Functions that only print return `None`.
+It is not `0`, not `""`, and it is not an error — but `None + 1` is, because you cannot add to
+nothing.
+
+**Why does an indentation error appear on a line that looks fine?** Python reads indentation as
+structure, so a stray space at the start of a line is a statement about where that line belongs.
+Ask your editor to show whitespace once, and pick four spaces forever.
+
+**Why does `input("Age: ") + 1` fail?** `input` always returns text, even when the text looks like
+a number. Convert first: `int(input("Age: "))`. If the person types `twenty`, you get a
+`ValueError`, which is the next chapter's problem and the reason real scripts check their input.
+
+**Is `/` different from `//`?** `/` is division and produces a float: `7 / 2` is `3.5`. `//` throws
+away the remainder: `7 // 2` is `3`. The `%` operator gives you the remainder itself,
+`7 % 2` is `1`. Those three together cover almost every counting problem you will meet.
+
+## A slow read of one script
+
+```python
+name = input("Your name: ").strip()
+celsius = float(input("Temperature in C: "))
+fahrenheit = celsius * 9 / 5 + 32
+print(f"{name}, it is {fahrenheit:.1f} F")
+```
+
+Line one asks for a name and strips the spaces someone types out of habit. Line two converts the
+answer to a float immediately, before it can be used by mistake as text. Line three applies the
+formula in the order Python would anyway — multiply, divide, add — so the parentheses are optional
+and the meaning is unambiguous. Line four is an f-string: the `:.1f` inside the braces means "one
+digit after the point", which keeps `62.60000000000001` from reaching the reader.
+
+Now break it on purpose. Give a name with trailing spaces and see `.strip()` remove them. Enter
+`ten` as the temperature and read the traceback from the bottom up: the last line names the error,
+the line above it names your line. Enter `-40` and check both scales agree, which is the cheapest
+proof that a formula is right.
+
 ## Try it
 
 - Evaluate `2 ** 3 ** 2` and explain the result. Then force the other grouping with parentheses.

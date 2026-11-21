@@ -26,7 +26,6 @@ export default function HomePage() {
         </h1>
         <div className="hero__foot">
           {first ? <StartLink first={{ track: first.track, slug: first.slug }} /> : null}
-          <span className="hero__scroll">Scroll</span>
         </div>
       </section>
 

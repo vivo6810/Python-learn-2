@@ -313,6 +313,61 @@ pyautogui.alert("Finished")
 
 Two cautions. Dialogs belong to the automation, not to the program being automated — a modal window can appear on top of the application and swallow the clicks that follow. And a script that runs unattended must not contain a dialog at all; replace it with a command-line argument or a configuration value, or the scheduled run will sit there forever, waiting for someone who is asleep.
 
+## Doubts worth settling
+
+**Why do my coordinates click the wrong thing?** Because screen coordinates depend on resolution,
+scaling, and which window is on top. Prefer locating an image, a window, or a control over absolute
+positions. If you must use a coordinate, capture it from the same machine and session you automate.
+
+**Why does `locateOnScreen` keep returning `None`?** Confidence is too high, the image is scaled,
+or the window is in the background. Save the snippet exactly as it appears, lower `confidence` to
+around 0.8, and bring the window forward before searching.
+
+**Is `pyautogui` fast enough for real work?** For occasional form filling, yes. It is slow and
+fragile for volume; a few hundred loops should be an API or a file import instead. Automating a GUI
+is the last resort, not the first.
+
+**How do I stop a runaway script?** Enable `pyautogui.FAILSAFE` (the default) so moving the mouse
+to a screen corner raises an exception. Add `time.sleep` pauses so you can take over, and test with
+short loops before a long run.
+
+**Why does my keyboard shortcut do nothing?** The target window may not have focus, the app may
+want a different modifier, or the shortcut may be swallowed by the system. Click the window first,
+wait a beat, then send the keys. `pyautogui.hotkey("ctrl", "s")` presses and releases in the right
+order; chained `keyDown` calls are where stuck modifiers come from.
+
+**How do I read text off the screen?** Take a screenshot of the region and run OCR, rather than
+trying to select text with the mouse. Clipboard tricks work too but overwrite what the person had
+copied, so restore it afterwards when that matters.
+
+## A slow read of one script
+
+```python
+import time
+import pyautogui
+
+pyautogui.PAUSE = 0.4
+window = pyautogui.getWindowsWithTitle("Invoices")[0]
+window.activate()
+time.sleep(1)
+
+button = pyautogui.locateCenterOnScreen("button-export.png", confidence=0.85)
+if button:
+    pyautogui.click(button)
+    time.sleep(2)
+    pyautogui.typewrite("march", interval=0.05)
+    pyautogui.press("enter")
+else:
+    print("export button not found")
+```
+
+`PAUSE` inserts a delay after every action, which makes the automation watchable and far less
+race-prone. Activating the window by title is more robust than clicking where it usually sits, and
+the sleep after activation gives the app time to redraw. Searching for an image rather than a
+coordinate survives window moves. Typing with an interval mimics a person and helps apps that drop
+fast keystrokes. The `else` branch reports failure instead of clicking something arbitrary, which is
+the difference between a broken script and a destructive one.
+
 ## Practice questions
 
 - Where is the origin of the screen grid, and which way do the axes run?

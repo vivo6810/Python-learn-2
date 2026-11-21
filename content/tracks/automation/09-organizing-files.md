@@ -278,6 +278,57 @@ with tarfile.open("logs.tar.gz") as archive:
 
 Whichever module you use, list the members before extracting and check for anything that is not a plain relative path. An archive from a stranger deserves a look inside before it gets a directory of yours.
 
+## Doubts worth settling
+
+**Is `Path` a string?** No, and that is the point. `Path` knows about separators, parents, suffixes
+and existence, while a string is just characters. Pass `str(path)` when a library insists on a
+string, and stop gluing paths with `+ "/"` — `folder / name` does the right thing on every system.
+
+**Why does `glob("*.txt")` miss files in subfolders?** A single star stays in one directory. Use
+`rglob("*.txt")` or `glob("**/*.txt")` to walk down. `iterdir()` lists one level with no pattern at
+all, which is faster when you already know what you want.
+
+**What order do globs return?** Whatever the filesystem gives, which is not guaranteed. Sort the
+results before acting: a renaming script that runs twice in different orders can collide with
+itself.
+
+**Is `shutil.move` safe across disks?** It copies and then deletes, so it works across drives but a
+crash mid-way can leave two copies. Within one disk it is a rename and nearly instant. `os.replace`
+is the atomic rename when you are overwriting deliberately.
+
+**Why did my rename fail with `FileExistsError`?** On a case-insensitive filesystem, renaming
+`report.txt` to `Report.txt` can collide with itself. Rename to a temporary name first, then to the
+target. Copy before you delete, every time, and keep a backup for the first run of any bulk script.
+
+**How do I avoid deleting the wrong thing?** Build the list of paths first, print it, and require a
+confirmation flag before acting. A dry run costs one line and prevents the classic
+`rm -rf`-in-a-loop story. Prefer a trash folder over permanent deletion while you are learning.
+
+## A slow read of one script
+
+```python
+from pathlib import Path
+import shutil
+
+source = Path("downloads")
+target = Path("sorted")
+target.mkdir(exist_ok=True)
+
+for file in sorted(source.glob("*")):
+    if not file.is_file():
+        continue
+    bucket = target / file.suffix.lstrip(".").lower()
+    bucket.mkdir(exist_ok=True)
+    shutil.move(str(file), str(bucket / file.name))
+    print(f"{file.name} -> {bucket.name}/")
+```
+
+Sorting first makes the printed log reproducible. The `is_file` check skips folders, which `glob("*")`
+returns. `suffix` includes the dot, so `lstrip(".")` gives a clean folder name and `lower()` merges
+`JPG` and `jpg`. `mkdir(exist_ok=True)` is inside the loop because the bucket may not exist yet.
+Moving rather than copying is a choice: it is faster, but it means a bug loses the original, so dry
+runs matter here more than anywhere.
+
 ## Try it
 
 - Find every file larger than 50 MB under your home folder and print the five largest.
