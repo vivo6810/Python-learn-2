@@ -297,14 +297,31 @@ def journal_path():
 def move_with_journal(moves, journal):
     with open(journal, "a", encoding="utf-8") as handle:
         for source, target in moves:
+            if os.path.exists(target):
+                raise FileExistsError(f"{target} exists; refusing to overwrite")
+            record = json.dumps({"from": os.fspath(source), "to": os.fspath(target)})
+            handle.write(record + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())   # persisted before the move happens
             os.replace(source, target)
-            handle.write(json.dumps({"from": source, "to": target}) + "\n")
 ```
 
-Each line is one action, written only after it succeeded — an action that failed needs no undo.
-Reversing is then a short script that reads the journal backwards and swaps the columns. Writing
-the journal in JSONL (one JSON object per line) matters: it stays readable and appendable, and a
-half-written last line from a crash can be detected and discarded.
+Two rules make the journal trustworthy. First, the record is written *before* the move and
+durable (`flush` + `fsync`), not appended after it — so a crash between the two never produces a
+silent unjournaled move. Second, the destination is never overwritten: if `target` exists the
+move refuses instead of destroying data the journal could not restore.
+
+That means a crash can leave an *incomplete intent*: a line in the journal whose move never
+happened. Recovery reconciles by asking the filesystem, not the log — for each recorded move,
+if the source exists and the target does not, the move never happened and the line is discarded;
+if the target exists and the source does not, the move happened and the line is kept for undo.
+Serialize before moving also means a `TypeError` from a bad value fails the journal write before
+the file moves, not after.
+
+Reversing is then a short script that reads the surviving lines backwards and swaps the columns
+back — skipping any line whose reverse destination already exists. Writing the journal in JSONL
+(one JSON object per line) matters: it stays readable and appendable, and a partial last line
+from a crash can be detected and discarded.
 
 Two cheaper habits buy most of the same safety. Keep a `.bak` copy of any file you edit in place —
 `path.with_suffix(path.suffix + ".bak")` — and for destructive operations, move to a trash folder

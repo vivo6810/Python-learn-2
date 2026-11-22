@@ -280,7 +280,9 @@ def rows_as_dict(sheet):
     rows = list(sheet.iter_rows(min_row=2, values_only=True))
     headers = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
     key_column = 0  # whatever identifies a row uniquely
-    return {row[key_column]: row for row in rows}
+    def keep(row):
+        return any(cell is not None and str(cell).strip() for cell in row)
+    return {row[key_column]: row for row in rows if keep(row)}
 
 old = rows_as_dict(old_sheet)
 new = rows_as_dict(new_sheet)

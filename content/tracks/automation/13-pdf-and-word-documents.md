@@ -400,7 +400,7 @@ import unicodedata
 
 def clean(text):
     text = unicodedata.normalize("NFKC", text)   # ﬃ -> ffi,  ﬁ -> fi
-    text = text.replace("-\n", "")               # join hyphenated line ends
+    text = re.sub(r"\n{2,}", "\n", text)           # paragraph break kept for now
     text = text.replace("\n", " ")               # reflow paragraphs
     text = re.sub(r" {2,}", " ", text)            # collapse runs of spaces
     return text.strip()
@@ -408,18 +408,61 @@ def clean(text):
 
 The `unicodedata` line matters more than it looks: PDFs from publishing tools often encode common
 letter pairs as a single glyph ("fi" as one code point), and NFKC unfolding turns those back into
-normal letters your comparisons will match. `-\n` removes the hyphen *and* the newline at once, so
-`informa-\ntion` becomes `information`. Collapsing spaces last keeps the joins tidy.
+normal letters your comparisons will match. Collapsing spaces last keeps the joins tidy.
 
-Repeated headers and footers are easier to drop after extraction: count lines across pages, and
-remove any line that appears on every page (or differs only by a page number). A simple heuristic
-is to collect the first and last line of each page globally and delete lines that match either.
+Hyphenated line endings are deliberately *not* joined here: `informa-\ntion` wants to become
+`information`, but `a well-\nknown fact` is a wrapped compound and joining it produces `wellknown`.
+They are indistinguishable without a dictionary. Either leave them as spaces, or join only when a
+line ends with `-` and you are prepared to flag suspicious results:
 
-Two-column layouts need coordinate-based extraction rather than text flow — `extract_text()` hands
-you interleaved columns. Sort by `(x, y)` positions from `extract_words()`, split the page at the
-column midpoint, and read left column top-to-bottom, then right. If a document is a scan rather
-than born-digital, no text tool will help; that is OCR territory, a different dependency and a
-different day.
+```python
+text = re.sub(r"([a-z])-\n([a-z])", r"\1\2", text)   # risky: cannot tell split word from wrapped compound
+```
+
+If you apply that join, extract the affected pages afterwards and let a human eyeball the ones that
+produced a suspiciously long word — that is cheaper than silently wrong text.
+
+Repeated headers and footers are easier to drop after extraction, but dropping by "first and last
+line of every page" alone will also delete unique body text that happens to open or close a page.
+Only auto-remove lines that *recur* across pages: collect the first and last few lines of each
+page, keep the candidates that appear on most pages, normalising page-number variation (e.g. replace
+digits with `#`), and remove those. Leave anything ambiguous — a line that appears on some but not
+all pages — for a person to review rather than deleting it outright.
+
+Two-column layouts need coordinate-based extraction rather than text flow. `extract_words()` is
+`pdfplumber`'s API, so the two-column job needs `pdfplumber`, not a `pypdf` page:
+
+```python
+import pdfplumber
+
+def column_text(path):
+    with pdfplumber.open(path) as pdf:
+        for page in pdf.pages:
+            words = page.extract_words()
+            midpoint = page.width / 2
+            columns = {"left": [], "right": []}
+            for word in words:
+                side = "left" if (word["x0"] + word["x1"]) / 2 < midpoint else "right"
+                columns[side].append(word)
+            for side in ("left", "right"):          # left column first, then right
+                print(lines(columns[side]))
+
+def lines(words):
+    rows = {}
+    for word in words:
+        key = round(word["top"], 1)                # words on the same line share a y
+        rows.setdefault(key, []).append(word)
+    for key in sorted(rows):                        # top to bottom
+        line = sorted(rows[key], key=lambda w: w["x0"])   # left to right within the line
+        print(" ".join(w["text"] for w in line))
+```
+
+Grouping words into lines by vertical position first is what `extract_text()` cannot do for you:
+a plain `(x, y)` sort would put a low word at the left margin above a high word on the right,
+scrambling both columns. Group by line, order within the line, then read the left column before
+the right. Sorting `(x, y)` globally is the bug to avoid, not the tool. If a document is a scan
+rather than born-digital, no text tool will help; that is OCR territory, a different dependency
+and a different day.
 
 ## Doubts worth settling
 

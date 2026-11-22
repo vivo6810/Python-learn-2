@@ -257,6 +257,7 @@ pattern that keeps you out of trouble is a tiny builder function with sensible M
 ```python
 import os
 import smtplib
+import ssl
 from email.message import EmailMessage
 
 def build_message(to, subject, body):
@@ -268,16 +269,19 @@ def build_message(to, subject, body):
     return message
 
 def send(message):
+    context = ssl.create_default_context()   # verifies the certificate and hostname
     with smtplib.SMTP("smtp.example.com", 587) as server:
-        server.starttls()
+        server.starttls(context=context)
         server.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
         server.send_message(message)
 ```
 
 Three decisions are baked into that: the sender and credentials come from the environment, so the
-file is safe to share; `starttls()` runs before `login()`, so the password travels encrypted and
-the handshake happens in the right order; and `send_message` lets `EmailMessage` handle the MIME
-headers, which is where hand-built strings usually break.
+file is safe to share; `starttls()` receives an explicit `ssl.create_default_context()`, because
+the bare default trusts any certificate the server presents — the login password and every message
+would otherwise be readable by whoever intercepts the connection — and it runs before `login()`, so
+credentials travel encrypted over a verified channel; and `send_message` lets `EmailMessage` handle
+the MIME headers, which is where hand-built strings usually break.
 
 For HTML mail, call `add_alternative(html, subtype="html")` after `set_content` — the plain text
 first, HTML second — and keep the HTML simple enough to read in a text editor. Never build HTML by
