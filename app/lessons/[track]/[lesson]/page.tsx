@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LessonAside } from "@/components/LessonAside";
 import { Markdown } from "@/components/Markdown";
-import { RunnableExamples } from "@/components/RunnableExamples";
 import { getLesson, getLessonNeighbours, getTrack, getTracks } from "@/lib/content";
 import { renderMarkdown } from "@/lib/markdown";
 
@@ -49,9 +48,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
           <h1 className="lesson__title">{lesson.title}</h1>
         </header>
 
-        <RunnableExamples>
-          <Markdown html={renderMarkdown(lesson.body)} />
-        </RunnableExamples>
+        <Markdown html={renderMarkdown(lesson.body)} />
 
         <nav className="pager" aria-label="Chapters">
           {previous ? (

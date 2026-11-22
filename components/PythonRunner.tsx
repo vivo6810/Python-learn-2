@@ -6,8 +6,6 @@ import { runPython, stopPython } from "@/lib/pyodide";
 export type PythonRunnerProps = {
   /** Code shown on first render; Reset restores it. */
   initialCode: string;
-  /** `example` renders inside a chapter's code figure; `playground` fills its page. */
-  variant?: "example" | "playground";
   /** Suggested filename for the downloaded .py file. */
   fileName?: string;
 };
@@ -19,7 +17,7 @@ type Output = { stdout: string; stderr: string; ok: boolean } | null;
  * button, captured stdout/stderr, and .py import/export. The Python runtime is
  * downloaded on the first run, never on page load.
  */
-export function PythonRunner({ initialCode, variant = "example", fileName = "example.py" }: PythonRunnerProps) {
+export function PythonRunner({ initialCode, fileName = "playground.py" }: PythonRunnerProps) {
   const [code, setCode] = useState(initialCode);
   const [output, setOutput] = useState<Output>(null);
   const [running, setRunning] = useState(false);
@@ -91,10 +89,8 @@ export function PythonRunner({ initialCode, variant = "example", fileName = "exa
     [run],
   );
 
-  const isExample = variant === "example";
-
   return (
-    <div className={`pyrunner${isExample ? " pyrunner--example" : ""}`}>
+    <div className="pyrunner">
       <div className="pyrunner__toolbar">
         <span className="pyrunner__lang">python</span>
         <div className="pyrunner__actions">
@@ -151,7 +147,7 @@ export function PythonRunner({ initialCode, variant = "example", fileName = "exa
         autoCapitalize="off"
         autoCorrect="off"
         wrap="off"
-        rows={isExample ? Math.min(28, Math.max(6, code.split("\n").length + 1)) : 18}
+        rows={18}
       />
 
       <div className="pyrunner__panel" aria-live="polite">

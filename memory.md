@@ -461,6 +461,16 @@ material is never committed, never served, and never mentioned anywhere in the p
 - First `Deploy to GitHub Pages` run (on the PR #4 merge) failed at `actions/configure-pages`
   exactly because Pages is not enabled yet; re-running it after the toggle is the fix.
 
+### 2026-11-22 — Lesson examples back to static; mobile hero spacing
+
+- Lesson `python` blocks are no longer runnable in-page: REPL transcripts in the lessons made
+  them unexecutable as scripts, so every example was a guaranteed SyntaxError. `RunnableExamples`
+  deleted; python figures render as static highlighted code again; `/playground` keeps the full
+  runner (Run/Stop/Reset/Copy/Download/Open…). `PythonRunner` lost its `variant` prop (playground
+  only now) and the `.pyrunner--example` styles are gone.
+- Hero on small screens: `min-height: 100svh` + bottom-aligned text left a huge void between the
+  fixed header and the headline; ≤640px now uses natural height with modest top padding.
+
 ## Where things live
 
 | Path | Meaning |
