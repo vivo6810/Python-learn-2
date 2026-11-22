@@ -276,6 +276,56 @@ print(f"{1234567:,}")     # 1,234,567
 
 Those format specifiers round and group at print time, leaving the stored value untouched — the right division of labour between arithmetic and presentation.
 
+## A first real program, end to end
+
+Vocabulary only goes so far. Here is a complete, small program that uses almost everything from
+this chapter, followed by a reading of it line by line.
+
+```python
+# unit.py: converts kilometres to miles
+km = float(input("Kilometres: "))
+miles = km * 0.621371
+print(f"{km:.1f} km is {miles:.2f} miles")
+```
+
+Every line earns its place. The comment says what the file is for, which is the only comment a
+file needs at the top. `input()` returns text, so `float()` does the conversion before any
+arithmetic can misfire — enter `ten` and the traceback points at this exact line. The multiplier
+`0.621371` converts kilometres to miles. The f-string keeps the output tidy: one decimal for the
+input, two for the result.
+
+Now make it honest. Input from a person can be empty, negative, or not a number at all, and a
+program that crashes on the first typo is not finished, it is a prototype:
+
+```python
+def to_float(text):
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+raw = input("Kilometres (blank to quit): ").strip()
+while raw:
+    km = to_float(raw)
+    if km is None:
+        print("That is not a number; try again.")
+    else:
+        print(f"{km:.1f} km is {km * 0.621371:.2f} miles")
+    raw = input("Kilometres (blank to quit): ").strip()
+
+print("done")
+```
+
+`try`/`except` is the subject of a later chapter, but even in outline it reads like what it does:
+*try* to change the text into a float, and *if that fails*, return `None` instead of blowing up.
+The `while` loop turns a one-shot conversion into a tool the user can use repeatedly, and the blank
+answer gives them a way out. The `done` at the end proves the loop ended and the program did not
+die silently.
+
+Three habits in that short program matter more than any single construct: convert input at the
+boundary, handle the bad case explicitly, and print something unmistakable when the program ends.
+Everything else in this course is a bigger version of the same skeleton.
+
 ## Doubts worth settling
 
 **Does `x = 5` mean x equals five?** No. It means the name `x` points at the number 5. A second
@@ -329,3 +379,5 @@ proof that a formula is right.
 - Ask for a temperature in Celsius, convert it to Fahrenheit, and print the sentence `21C is 69.8F`.
 - Print a receipt with items aligned in a column using `sep` and `end`, then again with f-strings.
 - Write a line that raises `NameError`, read the message, and fix it.
+- Extend the unit converter so it also answers miles to kilometres when asked (`m` for miles).
+- Write a program that asks for three numbers and prints the largest, using `max()` with three arguments.

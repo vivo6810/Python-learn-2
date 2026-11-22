@@ -278,6 +278,42 @@ with tarfile.open("logs.tar.gz") as archive:
 
 Whichever module you use, list the members before extracting and check for anything that is not a plain relative path. An archive from a stranger deserves a look inside before it gets a directory of yours.
 
+## Undoing a bulk change
+
+A dry run shows what would happen; a journal shows what did happen, which is what you need when a
+rename of twelve thousand files turns out to have a systematic mistake halfway through. The idea
+is to write every action to a log file as it happens, in a form you can feed back to the script to
+reverse it.
+
+```python
+import json
+import os
+import time
+
+def journal_path():
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    return f"undo-{stamp}.json"
+
+def move_with_journal(moves, journal):
+    with open(journal, "a", encoding="utf-8") as handle:
+        for source, target in moves:
+            os.replace(source, target)
+            handle.write(json.dumps({"from": source, "to": target}) + "\n")
+```
+
+Each line is one action, written only after it succeeded — an action that failed needs no undo.
+Reversing is then a short script that reads the journal backwards and swaps the columns. Writing
+the journal in JSONL (one JSON object per line) matters: it stays readable and appendable, and a
+half-written last line from a crash can be detected and discarded.
+
+Two cheaper habits buy most of the same safety. Keep a `.bak` copy of any file you edit in place —
+`path.with_suffix(path.suffix + ".bak")` — and for destructive operations, move to a trash folder
+instead of `os.remove`. Moving is instant and reversible; deleting is neither. Reserve real deletion
+for the day after the move has been running cleanly.
+
+The journal also doubles as a report: at the end of the run, print how many actions were taken and
+where the journal lives, because "it ran" is not the same as "I know what it did".
+
 ## Doubts worth settling
 
 **Is `Path` a string?** No, and that is the point. `Path` knows about separators, parents, suffixes
@@ -336,3 +372,5 @@ runs matter here more than anywhere.
 - Write a dry-run script that sorts loose files into folders by extension, printing each move.
 - Zip a folder with `ZIP_DEFLATED`, then list the members and their compressed sizes.
 - Refuse to extract any archive member whose name contains `..`.
+- Write a `move_with_journal` that logs every move as JSONL, then write the undo script that reverses it.
+- Do the same bulk rename twice — once touching the real folder, once with `--dry-run` — and diff the two journals.

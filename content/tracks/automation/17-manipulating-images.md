@@ -324,6 +324,46 @@ This site's images are not the place to be clever: pick one format per kind of i
 
 `dpi` and `exif` are metadata, not pixels. Setting `dpi=(300, 300)` tells a printer how to size the image and does not add detail; passing `exif=image.info.get("exif")` keeps the camera data through a rotate, which is why a phone photo comes back the right way up in other software after you have edited it.
 
+## Batch processing that cannot wreck a folder
+
+The moment a script loops over hundreds of images, one wrong line overwrites everything it
+should have transformed. Three habits make bulk image jobs boring instead of terrifying.
+
+First, never write over the input. Write transformed copies to a separate output folder, built
+from the input's path with a new suffix:
+
+```python
+from pathlib import Path
+
+def output_path(source, out_dir, tag="web"):
+    out = Path(out_dir)
+    out.mkdir(exist_ok=True)
+    return out / f"{source.stem}.{tag}.jpg"
+```
+
+If something goes wrong halfway, the originals are untouched and the output folder can be deleted
+and re-created in seconds. Second, decide what "done" means and skip it: `if target.exists(): continue`
+is the whole resume mechanism, and it turns a re-run from a disaster into a no-op. Third, log one
+line per file — `source -> target` or the reason it was skipped — so at the end you can answer
+"what happened to image_047.jpg?" from a file instead of from memory.
+
+```python
+for source in folder.glob("*.jpg"):
+    target = output_path(source, "web")
+    if target.exists():
+        print(f"skip {source.name} (exists)")
+        continue
+    with Image.open(source) as img:
+        img.thumbnail((1600, 1600))
+        img.convert("RGB").save(target, quality=85)
+    print(f"{source.name} -> {target.name}")
+```
+
+`thumbnail` mutates the image in place and always preserves the aspect ratio, which is what you
+want for previews. Converting to `RGB` before saving JPEG matters because images with alpha or
+palette modes cannot be stored as JPEG, and the error message for that is easy to misdiagnose.
+Run the whole thing once on a three-image sample folder before pointing it at the real one.
+
 ## Doubts worth settling
 
 **Why did saving as JPEG turn my transparent logo black?** JPEG has no alpha channel, so transparent
@@ -380,3 +420,5 @@ printing the size turns quality choices into measurements instead of opinions.
 - Why does `textbbox` exist when `draw.text` already knows where the text goes?
 - Write a script that puts a translucent logo in the bottom-right of every image in a folder.
 - Find the three most common colours in a photo and print their counts.
+- Batch-convert a folder of images to web-sized JPEGs in an output folder, skip files that already exist, and print a per-file log.
+- Prove a batch script is non-destructive by running it twice and showing the second run only skips.

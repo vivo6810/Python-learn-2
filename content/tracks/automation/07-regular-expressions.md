@@ -278,6 +278,41 @@ Two jobs should not be given to a regex. Validating an email address properly is
 
 Finally, print the pattern and the input side by side when it will not match. Most failures are an unescaped `.`, a missing `re.MULTILINE`, or a trailing newline that `$` does not allow for.
 
+## When not to reach for `re`
+
+A pattern engine is powerful enough to hide the intention of the code under a layer of syntax.
+Before writing one, check whether an ordinary string operation answers the question, because the
+plain version is read by everyone and the pattern version is read only by the patient.
+
+```python
+if line.startswith("ERROR"):        # no pattern needed
+    ...
+
+parts = line.split(",")             # no pattern needed
+words = text.lower().split()        # no pattern needed
+```
+
+Those cover an enormous fraction of real work: prefix checks, suffix checks, fixed separators,
+substring tests with `in`. A regex earns its keep when the same line cannot be done with a handful
+of string calls — shapes with variability (three kinds of quoting, optional sign, variable digits),
+matching with alternatives and repetition, and extracting several pieces of a line in one pass.
+
+A useful test is the ten-year rule: if you cannot predict the pattern's answer on your three least
+licky inputs, and the next person cannot read it cold, keep it simple. When you do need one, name
+what it does with a variable (`date_pattern = re.compile(...)`) rather than inlining it, add a short
+comment with a sample line it matches, and keep the pattern as small as the job allows. A pattern
+that matches exactly the input class you have beats a general one that also fires on inputs you
+have never seen.
+
+```python
+# matches "order 1234 delivered" and nothing else
+order_line = re.compile(r"^order (\d+) delivered$")
+```
+
+Beginners reach for `.*` when they mean "some characters", and for nested groups when one will do.
+Resist both. The chapter's recipes exist so the common questions have a written-down answer; open
+them before you design a pattern from scratch.
+
 ## Doubts worth settling
 
 **Why does `re.match` fail on text that clearly contains the pattern?** `match` only looks at the
@@ -331,3 +366,5 @@ build: `re` reports absence with `None`, not with an exception.
 - Validate that a string is a whole number of at most four digits, using anchors.
 - Find every repeated word in a paragraph with `r"\b(\w+)\s+\1\b"`.
 - Rewrite a log line's timestamp into a different format with `sub` and named groups.
+- Decide, for five given lines, whether you would use string methods or a pattern — and write the simpler one.
+- Add a comment above a regex naming a sample line it matches, then check the pattern still matches it.

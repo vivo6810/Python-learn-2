@@ -258,6 +258,63 @@ else:
 
 That `else` runs only when the loop never broke, which is exactly the "give up" branch you want.
 
+## Reading a condition out loud
+
+Half of working with flow control is translating a condition into plain speech and checking whether
+it matches what you meant. Compound conditions hide their meaning best, so read them word by word.
+
+```python
+if user_age >= 18 and ticket != "none":
+    print("admit")
+```
+
+Read it as: *the user is eighteen or older, and the ticket is not none, admit.* Now consider the
+bug version:
+
+```python
+if not (user_age >= 18 and ticket != "none"):
+    print("refuse")
+```
+
+`not` wrapped around a compound condition inverts the whole thing, and the refusal branch ends up
+meaning either the user is under eighteen or the ticket is none — which is usually what you want,
+but only if you notice you want it. A plainer equivalent is to spell the refusal out:
+
+```python
+too_young = user_age < 18
+no_ticket = ticket == "none"
+
+if too_young or no_ticket:
+    print("refuse")
+```
+
+Naming the conditions turns a puzzle into a sentence, and De Morgan's laws tell you the
+translation is mechanical: `not (a and b)` is the same test as `(not a) or (not b)`, and
+`not (a or b)` is `(not a) and (not b)`. When a condition grows past one line on screen, extract
+each clause into a named boolean and let the `if` read like English.
+
+The same reading skill catches inverted logic in loops. `if len(items) > 0:` and
+`if items:` are the same test written two ways; `if not items:` is its mirror, and swapping them
+is the most common control-flow bug there is. When the program behaves backwards — runs when you
+expected a skip, skips when you expected a run — suspect an inverted condition before anything
+else, and print the boolean to confirm.
+
+Guard clauses push this further: they state the exit conditions up front and leave the happy path
+flat.
+
+```python
+def price_tag(item):
+    if item is None:
+        return "unknown"
+    if item.price is None:
+        return "ask at the desk"
+    return f"{item.price:.2f}"
+```
+
+Each guard answers one question and returns; the final line is what remains after the guards have
+done their work. Nesting every check inside the previous one makes the happy path invisible, and
+invisible paths are where bugs hide.
+
 ## Doubts worth settling
 
 **What counts as true?** Empty things are false: `0`, `0.0`, `""`, `[]`, `{}`, `None`, and `False`.
@@ -322,3 +379,5 @@ the `else`, and that is the exact sentence a reader wants there.
 - Write a loop that keeps doubling a number until it passes one million, then prints how many doublings it took.
 - Print a triangle of stars whose height comes from `input()`.
 - Write a `while` loop that reads words until `"stop"` and prints the longest one.
+- Take a compound condition with `not (a and b)` and rewrite it with De Morgan's laws; check both versions on the same inputs.
+- Add guard clauses to a nested if-chain and confirm the happy path reads flat.

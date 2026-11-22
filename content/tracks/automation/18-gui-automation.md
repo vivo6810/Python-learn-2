@@ -313,6 +313,36 @@ pyautogui.alert("Finished")
 
 Two cautions. Dialogs belong to the automation, not to the program being automated — a modal window can appear on top of the application and swallow the clicks that follow. And a script that runs unattended must not contain a dialog at all; replace it with a command-line argument or a configuration value, or the scheduled run will sit there forever, waiting for someone who is asleep.
 
+## Verifying every step, not just the clicks
+
+A click that lands is not the same as a step that worked. The window may focus the wrong field,
+an autocomplete may steal the Tab, a dialog may appear over the form. GUI automation becomes
+trustworthy when you check the result of each step instead of the action itself.
+
+```python
+def click_and_check(target_image, expect_text):
+    box = wait_for(target_image, timeout=15)
+    pyautogui.click(box)
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        screen = pyautogui.screenshot()
+        if text_visible(screen, expect_text):   # via pytesseract or locateOnScreen
+            return
+        time.sleep(0.5)
+    raise RuntimeError(f"expected {expect_text!r} after click; aborting")
+```
+
+The shape matters: act, observe, compare, and abort loudly on mismatch. A script that aborts on
+the unexpected is worth a hundred that "run successfully" and fill the wrong row. Where the obvious
+check is not available — a modal obscured the screen, a field that will not accept the value —
+take a screenshot and raise with its path, so the failure is reviewable later.
+
+Two extra guards pay for themselves. Save a screenshot before every destructive action, and at the
+end of the run print a summary of what was done and anything that was skipped, because nobody
+reads a log that says only "OK". On anything unattended, require the primary window to be focused
+before typing — `pygetwindow` (or printing `pyautogui.getActiveWindowTitle()`) — or your password
+manager steals the keystrokes destined for a form field.
+
 ## Doubts worth settling
 
 **Why do my coordinates click the wrong thing?** Because screen coordinates depend on resolution,
@@ -377,3 +407,5 @@ the difference between a broken script and a destructive one.
 - Why is a wait loop better than `time.sleep(5)` before a click?
 - Write a script that opens a spreadsheet program, fills the first ten rows, and saves.
 - Rewrite a coordinate-based form filler to use `press("tab")` instead.
+- Add a post-action check to a form-filler that aborts with a screenshot path when the expected text never appears.
+- Make a typing step refuse to run unless the expected window title is focused, and test it with the wrong window in front.

@@ -387,6 +387,40 @@ Heading structure is worth reading before you write. `paragraph.style.name` tell
 
 Finally, save to a new path. `Document.save()` overwrites silently, and a bug in a replacement loop is much easier to see when the original is still there.
 
+## Getting trustworthy text out of a PDF
+
+`extract_text()` gives you characters in the order the PDF stores them, which is not always the
+order a human reads. Two problems show up constantly: words broken across lines by hyphenation,
+and repeated page furniture (headers, footers, page numbers) glued to the content. Neither is
+fatal, and a short cleanup pipeline fixes both.
+
+```python
+import re
+import unicodedata
+
+def clean(text):
+    text = unicodedata.normalize("NFKC", text)   # ﬃ -> ffi,  ﬁ -> fi
+    text = text.replace("-\n", "")               # join hyphenated line ends
+    text = text.replace("\n", " ")               # reflow paragraphs
+    text = re.sub(r" {2,}", " ", text)            # collapse runs of spaces
+    return text.strip()
+```
+
+The `unicodedata` line matters more than it looks: PDFs from publishing tools often encode common
+letter pairs as a single glyph ("fi" as one code point), and NFKC unfolding turns those back into
+normal letters your comparisons will match. `-\n` removes the hyphen *and* the newline at once, so
+`informa-\ntion` becomes `information`. Collapsing spaces last keeps the joins tidy.
+
+Repeated headers and footers are easier to drop after extraction: count lines across pages, and
+remove any line that appears on every page (or differs only by a page number). A simple heuristic
+is to collect the first and last line of each page globally and delete lines that match either.
+
+Two-column layouts need coordinate-based extraction rather than text flow — `extract_text()` hands
+you interleaved columns. Sort by `(x, y)` positions from `extract_words()`, split the page at the
+column midpoint, and read left column top-to-bottom, then right. If a document is a scan rather
+than born-digital, no text tool will help; that is OCR territory, a different dependency and a
+different day.
+
 ## Doubts worth settling
 
 **Why is the extracted text in the wrong order?** A PDF stores text by position, not by reading
@@ -445,3 +479,5 @@ a new file keeps the original intact, which is the habit that makes a bulk PDF s
 - What does `decrypt()` return, and how do you tell a wrong password from a right one?
 - Write a loop that renames every `.docx` file in a folder to a slug of its first heading.
 - Combine two PDFs, put a cover page in front, and save the result as one file.
+- Extract text from a two-column PDF and identify why the columns interleave; then list the three cleanup steps you would apply.
+- Strip repeated headers/footers from every page of a PDF and save the result as a `.txt`.

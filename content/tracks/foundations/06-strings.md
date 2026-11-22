@@ -270,6 +270,45 @@ A byte-order mark at the start of a file — common in exports from Windows soft
 
 `width` in formatting counts characters, not bytes, so `len("café")` is 4 while its UTF-8 form is 5 bytes. Text columns may still look ragged in a terminal because some characters are displayed two cells wide; for table output, that is a limitation to live with or a library to reach for.
 
+## From raw text to structured fields
+
+A log line, a CSV row, a config entry — most text you meet has a shape, and the string tools above
+are the ones that carve it. Here is the pattern end to end.
+
+```python
+line = "2024-05-01T14:22:10 ERROR disk full on /dev/sda1"
+
+timestamp, _, rest = line.partition(" ")
+level, _, message = rest.partition(" ")
+print(timestamp)   # 2024-05-01T14:22:10
+print(level)       # ERROR
+print(message)     # disk full on /dev/sda1
+```
+
+`partition()` splits on the first occurrence and always returns a 3-tuple: before, the separator,
+after. That is what makes it safer than `split()` for this job — there is no "did it work?" to
+answer, because a missing separator gives you `(whole_string, "", "")` rather than an exception or
+a shorter list. Check the separator to detect a malformed line:
+
+```python
+date, sep, rest = line.partition(" ")
+if not sep:
+    print("not a log line:", line)
+```
+
+For fixed-shape records, this combination covers most parsing: `strip()` the line, `partition()`
+or `split()` it on the expected separators, and validate as you go. When the format gets nested —
+quotes inside fields, optional segments, escapes — stop reaching for string methods and open the
+chapter on regular expressions, which is built for exactly the lines where this stops being fun.
+
+`removeprefix()` and `removesuffix()` finish the toolkit: they strip an affix only when it is
+present, and they never misfire on a shorter or longer match the way `strip()` can.
+
+```python
+print("data.csv".removesuffix(".csv"))    # data
+print("data.csv".removesuffix(".txt"))    # data.csv
+```
+
 ## Doubts worth settling
 
 **Why can't I change one character?** Strings are immutable. `name[0] = "A"` raises `TypeError`
@@ -324,3 +363,5 @@ stays available for matching.
 - Count the vowels in a paragraph, ignoring case.
 - Clean a pasted list of emails: split on commas or newlines, strip each, lowercase it, drop empties, and join with `"; "`.
 - Generate a 20-character password with `secrets` and report whether it contains a digit and a symbol.
+- Parse a log line like `2024-05-01 ERROR disk full` into timestamp, level, and message using `partition`; print the level in caps.
+- Take a file of `name:value` pairs, skip malformed lines, and print a summary count of each value.

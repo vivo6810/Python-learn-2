@@ -115,7 +115,7 @@ export function SiteSearch({ entries }: SiteSearchProps) {
       </label>
 
       {visible ? (
-        <ul className="search__panel" aria-label="Chapters">
+        <ul className="search__panel" role="list" aria-label="Chapters">
           {results.length ? (
             results.map((entry) => (
               <li className="search__item" key={`${entry.track}/${entry.slug}`}>

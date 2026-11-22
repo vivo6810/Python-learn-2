@@ -254,6 +254,35 @@ Read `cumtime` first: it is the total time spent in a function including what it
 
 The most common result of profiling is that the program is waiting, not computing: a network call inside a loop, a file opened and closed repeatedly, a database query per row. No amount of rewriting the inner arithmetic fixes a round trip. Move the I/O out of the loop and the numbers change by an order of magnitude.
 
+## Twenty minutes of methodical narrowing
+
+When a bug resists the obvious look, stop guessing and narrow it down on purpose. The method is
+always the same shape: make the failure repeatable, shrink the input until the failure is smallest,
+then move the boundary between "works" and "does not" until both are one line apart.
+
+First, write down the exact input that fails and the exact wrong behaviour. A bug you cannot
+describe in one sentence is a bug you do not understand yet. Reproduce it once on demand; if you
+cannot reproduce it, the problem is elsewhere — timing, environment, or data that differs between
+machines.
+
+Second, shrink it. Delete the input down to the smallest file, the shortest list, the one record
+that still fails. Half the time the bug is found in this step, because the cause is something the
+shrinking removes.
+
+Third, bisect the code. If the value is wrong at line 40, print the inputs to line 40's function
+and check them against the spec; if they are right, the bug is inside; if they are wrong, it is
+upstream. Keep halving. Ten print statements beat an hour of squinting.
+
+```python
+assert add_tax(100) == 108.80   # known-good value, worth keeping
+result = compute(records)
+print("records:", len(records), "first:", records[0])
+```
+
+Finally, when the cause is found, add the check that would have caught it — an assert, a test, a
+log line — so the bug stays fixed. A fixed bug without a guard is a bug you will meet again, and
+usually on a Friday.
+
 ## Doubts worth settling
 
 **Where do I start with a traceback?** At the bottom. The last line names the error and often the
@@ -308,3 +337,5 @@ and the output cheap when the level is disabled.
 - Replace every `print()` in a script with `logging.info()` and send the output to a file.
 - Set a `breakpoint()` in a loop, step through three iterations, and print a variable at each.
 - Catch `OSError` around a file read, log the exception with `logging.exception`, and re-raise.
+- Take a failing script, write the failing input and wrong behaviour in one sentence, then shrink the input until the cause is obvious.
+- Bisect a bug with three prints of intermediate values and say which half it was in each time.

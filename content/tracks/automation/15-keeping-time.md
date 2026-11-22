@@ -330,6 +330,43 @@ It is a convenience, not an authority: it will also invent a date from `"2024"` 
 
 Two habits prevent most of this. Accept ISO 8601 in anything you design, and store timestamps as ISO strings with an offset or as Unix seconds. Both sort correctly as text or numbers, both survive a trip through JSON, and neither needs a format string to be read back.
 
+## Choosing a clock for the job
+
+Two clocks share the name "time" and they are good at different jobs, and mixing them is the
+source of a whole family of embarrassing bugs. `time.time()` counts seconds since the epoch — it is
+the right clock for "when did this happen" across machines, but it can jump backwards when the
+system clock is corrected. `time.monotonic()` counts from an arbitrary point and never jumps, which
+is the right clock for measuring how long something took.
+
+```python
+start = time.monotonic()
+do_work()
+elapsed = time.monotonic() - start
+print(f"took {elapsed:.2f}s")
+```
+
+Use neither for the wall calendar inside a long-running process that cares about midnight and DST:
+`datetime.now()` is the readable choice there. DST is the reason a daily job scheduled at 02:30
+never runs on the morning the clocks spring forward — the wall time does not exist. Schedule
+absolute jobs inside the operating system's scheduler (cron, Task Scheduler) or keep a sentinel
+file recording the last successful run, and let the job decide whether it is due; that design is
+immune to sleep, restarts, and skipped hours.
+
+A countdown timer built from `time.time()` and checked in a loop behaves the same everywhere and
+survives suspend; one built from `sleep()` calls loses drift with every iteration. If accuracy
+matters, compare instants, not counts of sleeps:
+
+```python
+end = time.monotonic() + 10
+while time.monotonic() < end:
+    print("seconds left:", int(end - time.monotonic()))
+    time.sleep(1)
+```
+
+And when a schedule must survive a reboot, keep it out of your program entirely: cron or a systemd
+timer is the tool, and your script should be content to be run; the schedule is somebody else's
+responsibility.
+
 ## Doubts worth settling
 
 **Is `datetime.now()` timezone-aware?** No, it is naive: it holds a wall-clock reading with no
@@ -388,3 +425,5 @@ so nobody has to guess.
 - Why must a cron job use absolute paths, and where should its output go?
 - Launch a text editor with a file, wait five seconds, then close it by process object.
 - Write a countdown that plays one reminder every ten minutes for an hour.
+- Measure how long a task takes with `time.monotonic()` and print it to two decimals.
+- Explain why a daily 02:30 job can be skipped by DST and describe one design that survives it.

@@ -249,6 +249,46 @@ Test with a seed list of real addresses across providers before a real send. Ope
 
 For anything beyond a personal script, a transactional email service exists precisely because this section is short and the reality is not. It handles authentication, reputation, bounces, and rate limits, and gives you an API instead of an SMTP conversation.
 
+## A sendable template without the HTML guessing game
+
+Most email code fails at the same stage: constructing the message object, not connecting. The
+pattern that keeps you out of trouble is a tiny builder function with sensible MIME plumbing.
+
+```python
+import os
+import smtplib
+from email.message import EmailMessage
+
+def build_message(to, subject, body):
+    message = EmailMessage()
+    message["From"] = os.environ["REPORT_FROM"]
+    message["To"] = to
+    message["Subject"] = subject
+    message.set_content(body)
+    return message
+
+def send(message):
+    with smtplib.SMTP("smtp.example.com", 587) as server:
+        server.starttls()
+        server.login(os.environ["SMTP_USER"], os.environ["SMTP_PASS"])
+        server.send_message(message)
+```
+
+Three decisions are baked into that: the sender and credentials come from the environment, so the
+file is safe to share; `starttls()` runs before `login()`, so the password travels encrypted and
+the handshake happens in the right order; and `send_message` lets `EmailMessage` handle the MIME
+headers, which is where hand-built strings usually break.
+
+For HTML mail, call `add_alternative(html, subtype="html")` after `set_content` — the plain text
+first, HTML second — and keep the HTML simple enough to read in a text editor. Never build HTML by
+concatenating user data; escape it or, better, keep the mail plain text when the audience can
+afford to read it. Attaching a file is one more method, `add_attachment(payload, maintype=...,
+subtype=..., filename=...)`, with the bytes read from disk — not a path name.
+
+Test by sending to yourself first, always. A typo in the recipient loop sends your report to a
+mailbox that exists but is not yours, and there is no undo for that — one more reason the dry-run
+habit from the automation chapters applies here too.
+
 ## Doubts worth settling
 
 **Is sending mail the same as delivering it?** No. A successful `smtplib` call means a server
@@ -310,3 +350,5 @@ encoded for you, and the recipient gets a real file rather than a pasted table.
 - Why does an IMAP search date look like `01-Nov-2026` rather than `2026-11-01`?
 - Write a script that emails you the ten newest unread subjects from a folder.
 - Delete every message older than a month after printing its subject.
+- Rewrite a hand-built MIME string as an `EmailMessage` with `set_content` and `add_alternative`, and note what got simpler.
+- Send yourself a report email with an attachment built by `add_attachment`, read via bytes from disk.

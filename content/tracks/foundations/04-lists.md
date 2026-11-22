@@ -306,6 +306,44 @@ print(sorted(people, key=lambda person: (-person[1], person[0])))
 
 Negating a number is the quick way to reverse one field while keeping the rest ascending. Add `reverse=True` only when every field should flip.
 
+## From a file of lines to a clean list
+
+Almost every real script starts the same way: a file full of text that needs to become a list of
+things. Here is the whole pattern with the sharp edges shown.
+
+```python
+def read_numbers(path):
+    numbers = []
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue          # skip blanks and comments
+            try:
+                numbers.append(float(line))
+            except ValueError:
+                print(f"skipping {line!r}: not a number")
+    return numbers
+
+total = read_numbers("readings.txt")
+print(sum(total), len(total))
+```
+
+Read it as a pipeline. `with open(...)` hands you the file one line at a time, so memory use does
+not depend on the file size. `strip()` removes the newline and any stray spaces, and the blank
+check afterwards ignores the lines that were only whitespace. Lines starting with `#` are treated
+as comments and skipped. `float()` converts, and the `try` around it keeps one bad line from
+killing the whole run — the `!r` in the f-string puts quotes around whatever was skipped so you can
+see trailing spaces or a stray comma.
+
+Two habits here are worth naming. First, convert as early as possible: the bad data loses the
+chance to wander further into the program. Second, decide what to do with the bad line out loud —
+skipping it silently is the worst option, because you never learn the file was messy.
+
+From here, everything else is list work: `sum`, `min`, `max`, sorting, filtering with a
+comprehension. The clean list the function returns is the whole product; the moment you have it,
+the analysis is three lines.
+
 ## Doubts worth settling
 
 **Why did changing one list change the other?** Because there is only one list. `b = a` copies the
@@ -358,3 +396,5 @@ specifiers keep money at two decimals, because `0.1 + 0.2` in floating point is 
 - Turn a grid of characters into a string with one row per line, then replace one cell and print it again.
 - Shuffle a list with `random.shuffle`, deal it into two hands, and print both sorted.
 - Show that `a = b` and `a = b.copy()` behave differently for a nested list.
+- Write a function that reads a file of temperatures (one per line, blanks allowed) and returns the average, skipping bad lines.
+- Flatten a list of lists of names into a single sorted, de-duplicated list using one comprehension and `sorted(set(...))`.

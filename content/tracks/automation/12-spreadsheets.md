@@ -269,6 +269,42 @@ sheet.freeze_panes = "A2"
 
 Do not read a sheet twice to get both values and formulas — open the workbook once with `data_only=False` for editing, or once with `True` for reporting. Mixing the two in one workbook object gives inconsistent results, since the cache is loaded at open time.
 
+## Reconciling two sheets
+
+The most common spreadsheet chore in a real office is not entering data — it is comparing two
+files that should agree: this month's export against last month's, or a system report against a
+hand-kept sheet. The recipe is the same every time, and doing it with openpyxl beats eyeballing.
+
+```python
+def rows_as_dict(sheet):
+    rows = list(sheet.iter_rows(min_row=2, values_only=True))
+    headers = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
+    key_column = 0  # whatever identifies a row uniquely
+    return {row[key_column]: row for row in rows}
+
+old = rows_as_dict(old_sheet)
+new = rows_as_dict(new_sheet)
+
+for key in sorted(set(old) | set(new)):
+    if key not in new:
+        print(f"missing in new: {key}")
+    elif key not in old:
+        print(f"added in new:   {key}")
+    elif old[key] != new[key]:
+        print(f"changed:        {key}")
+```
+
+Choosing the key is the whole design: an order number, an employee id, a date-plus-name pair that
+is unique together. Compare rows as tuples rather than cell by cell; if the sheets have the same
+column order, a tuple comparison Just Works. If the columns differ between the two files, compare
+by the header map from the previous section instead — zip headers with values and compare the
+resulting dictionaries.
+
+Report differences, do not silently fix them. Printing a clear list — missing, added, changed —
+gives a colleague something to sign off on, and it keeps you from "correcting" data that disagrees
+with reality in ways you do not understand. Export the diff to a third workbook when the list is
+long, and keep the two inputs untouched.
+
 ## Doubts worth settling
 
 **Why does a cell read as a number when I stored text?** Spreadsheets guess types from what you type.
@@ -326,3 +362,5 @@ values and is noticeably faster than touching cell objects one by one.
 - Create a new workbook with one sheet per month, each holding three sample rows.
 - Format a header row bold with a fill, freeze it, and set a currency format on a column.
 - Build a bar chart from two columns and anchor it beside the data.
+- Load two versions of the same sheet and print which rows were added, removed, or changed, keyed on an order id.
+- Compare two headers-different sheets by aligning columns through the header map and report any cell that differs.
