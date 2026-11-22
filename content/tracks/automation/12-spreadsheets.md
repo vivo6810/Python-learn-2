@@ -280,7 +280,23 @@ def rows_as_dict(sheet):
     rows = list(sheet.iter_rows(min_row=2, values_only=True))
     headers = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True))
     key_column = 0  # whatever identifies a row uniquely
-    return {row[key_column]: row for row in rows}
+
+    def keep(row):
+        return any(cell is not None and str(cell).strip() for cell in row)
+
+    result = {}
+    blank_keys = 0
+    for row in rows:
+        if not keep(row):
+            continue
+        key = row[key_column]
+        if key is None or not str(key).strip():
+            blank_keys += 1   # report these; never let them into the dictionary
+            continue
+        result[key] = row
+    if blank_keys:
+        print(f"skipped {blank_keys} row(s) with a blank key — check them by hand")
+    return result
 
 old = rows_as_dict(old_sheet)
 new = rows_as_dict(new_sheet)
@@ -293,6 +309,8 @@ for key in sorted(set(old) | set(new)):
     elif old[key] != new[key]:
         print(f"changed:        {key}")
 ```
+
+Rows with a blank key are reported and excluded — several empty keys would otherwise overwrite each other in the dictionary, and sorting mixed blank/present keys would fail. Check them by hand before trusting the diff.
 
 Choosing the key is the whole design: an order number, an employee id, a date-plus-name pair that
 is unique together. Compare rows as tuples rather than cell by cell; if the sheets have the same

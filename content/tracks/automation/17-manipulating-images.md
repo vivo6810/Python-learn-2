@@ -333,6 +333,7 @@ First, never write over the input. Write transformed copies to a separate output
 from the input's path with a new suffix:
 
 ```python
+import os
 from pathlib import Path
 
 def output_path(source, out_dir, tag="web"):
@@ -353,14 +354,24 @@ for source in folder.glob("*.jpg"):
     if target.exists():
         print(f"skip {source.name} (exists)")
         continue
-    with Image.open(source) as img:
-        img.thumbnail((1600, 1600))
-        img.convert("RGB").save(target, quality=85)
+    tmp = target.with_suffix(target.suffix + ".tmp")
+    try:
+        with Image.open(source) as img:
+            img.thumbnail((1600, 1600))
+            img.convert("RGB").save(tmp, format="JPEG", quality=85)
+        os.replace(tmp, target)   # rename only after the save succeeded
+    except Exception:
+        tmp.unlink(missing_ok=True)   # no half-written target left behind
+        raise
     print(f"{source.name} -> {target.name}")
 ```
 
+Saving to `<target>.tmp` first and renaming only after the write completes means an interrupted or
+failed run never leaves a truncated `target` behind — the `exists()` skip stays honest, and re-running
+the script simply retries the failed files. `os.replace` is atomic on the same filesystem.
+
 `thumbnail` mutates the image in place and always preserves the aspect ratio, which is what you
-want for previews. Converting to `RGB` before saving JPEG matters because images with alpha or
+want for previews. `format="JPEG"` is explicit because the temporary file ends in `.tmp`, and Pillow infers the format from the file extension — without it the save raises `ValueError` and no image is produced. Converting to `RGB` before saving JPEG matters because images with alpha or
 palette modes cannot be stored as JPEG, and the error message for that is easy to misdiagnose.
 Run the whole thing once on a three-image sample folder before pointing it at the real one.
 

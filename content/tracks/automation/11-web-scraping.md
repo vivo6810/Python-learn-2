@@ -303,9 +303,14 @@ endpoint goes behind a token, or the markup is restructured. The defense is not 
 library — it is a small set of checks that turn silent drift into a loud, fixable failure.
 
 ```python
+import math
+
 def parse_price(text):
     text = text.strip().replace(",", "").removeprefix("$")
-    return float(text)   # raises ValueError on garbage, not later
+    value = float(text)   # raises ValueError on garbage, not later
+    if not math.isfinite(value):
+        raise ValueError(f"non-finite price: {text!r}")
+    return value
 
 def scrape(html):
     soup = BeautifulSoup(html, "html.parser")

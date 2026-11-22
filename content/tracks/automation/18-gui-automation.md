@@ -171,7 +171,10 @@ import time
 def wait_for(image, timeout=30):
     deadline = time.time() + timeout
     while time.time() < deadline:
-        box = pyautogui.locateOnScreen(image, confidence=0.9)
+        try:
+            box = pyautogui.locateOnScreen(image, confidence=0.9)
+        except pyautogui.ImageNotFoundException:
+            box = None
         if box:
             return box
         time.sleep(0.5)
@@ -320,17 +323,37 @@ an autocomplete may steal the Tab, a dialog may appear over the form. GUI automa
 trustworthy when you check the result of each step instead of the action itself.
 
 ```python
+import pytesseract   # needs the tesseract binary on the system
+
+def text_visible(screenshot, text):
+    return text.lower() in pytesseract.image_to_string(screenshot).lower()
+
 def click_and_check(target_image, expect_text):
     box = wait_for(target_image, timeout=15)
+    before = pyautogui.screenshot()
+    if text_visible(before, expect_text):
+        raise RuntimeError(f"{expect_text!r} is already on screen; the click cannot be confirmed — pick a result region that only appears on success")
     pyautogui.click(box)
     deadline = time.time() + 5
     while time.time() < deadline:
         screen = pyautogui.screenshot()
-        if text_visible(screen, expect_text):   # via pytesseract or locateOnScreen
+        changed = screen != before                       # something visibly happened
+        if changed and text_visible(screen, expect_text):
             return
         time.sleep(0.5)
     raise RuntimeError(f"expected {expect_text!r} after click; aborting")
 ```
+
+Two details make that check honest. `text_visible` is defined before it is used — it runs OCR with
+pytesseract (a working extractor, not a placeholder), so `expect_text` is what the screen actually
+shows, case-insensitively. And the precondition makes pre-existing text impossible to mistake for success: if the expected
+text is already visible before the click, the function refuses to claim the click worked, because
+a clock tick or a stray redraw could otherwise satisfy the `changed` gate and OCR would happily
+read the old text back. The honest fix is to point the check at the region that only *transitions*
+on success (e.g. the status area showing "Saved"), or use an operation-specific indicator — a pixel
+that flips, a dialog that opens. If OCR is not an option, compare a small known result region instead of the whole screen —
+`pyautogui.pixelMatchesColor` on a key pixel or `locateOnScreen` on the region are enough — or
+compare before/after screenshots and assert they differ in the expected area.
 
 The shape matters: act, observe, compare, and abort loudly on mismatch. A script that aborts on
 the unexpected is worth a hundred that "run successfully" and fill the wrong row. Where the obvious

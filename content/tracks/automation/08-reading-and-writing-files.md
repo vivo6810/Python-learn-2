@@ -321,7 +321,10 @@ def count_errors(path):
     return errors, total
 
 errors, total = count_errors("server.log")
-print(f"{errors} errors in {total} lines ({errors / total:.1%})")
+if total == 0:
+    print("no lines found in server.log (empty file?)")
+else:
+    print(f"{errors} errors in {total} lines ({errors / total:.1%})")
 ```
 
 The loop variable is a line, newline included, so everything you do with it usually starts with

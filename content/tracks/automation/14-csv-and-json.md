@@ -318,28 +318,58 @@ mistake happens at the border: check each record as it enters the program, and k
 clean.
 
 ```python
+import csv
+import math
+from datetime import date
+
+REQUIRED = ("name", "amount", "date")
+
 def check_row(row):
     errors = []
-    if not row["name"].strip():
-        errors.append("empty name")
-    try:
-        row["amount"] = float(row["amount"])
-    except (KeyError, ValueError):
-        errors.append(f"bad amount: {row.get('amount')!r}")
-    if row.get("date", "").count("-") != 2:
-        errors.append(f"date not YYYY-MM-DD: {row.get('date')!r}")
+    for field in REQUIRED:
+        if row.get(field) is None or not str(row[field]).strip():
+            errors.append(f"missing {field}")
+
+    amount = row.get("amount")
+    if amount is not None and str(amount).strip():
+        try:
+            parsed = float(amount)
+            if not math.isfinite(parsed):
+                raise ValueError("non-finite")
+            row["amount"] = parsed
+        except ValueError:
+            errors.append(f"bad amount: {amount!r}")
+
+    raw_date = row.get("date")
+    if raw_date is not None and str(raw_date).strip():
+        try:
+            row["date"] = date.fromisoformat(str(raw_date).strip())
+        except ValueError:
+            errors.append(f"bad date (want YYYY-MM-DD): {raw_date!r}")
+
     return errors
 
 with open("invoices.csv", newline="", encoding="utf-8") as handle:
-    rows = list(csv.DictReader(handle))
-
-bad = [(i, check_row(r)) for i, r in enumerate(rows, start=2)]
-bad = [(i, errs) for i, errs in bad if errs]
+    reader = csv.DictReader(handle)
+    missing = [field for field in REQUIRED if field not in (reader.fieldnames or ())]
+    if missing:
+        raise SystemExit(f"missing required columns: {', '.join(missing)}")
+    bad = []
+    for row in reader:
+        errs = check_row(row)
+        if errs:
+            bad.append((reader.line_num, errs))   # physical line, not record count
 if bad:
     for line, errs in bad:
         print(f"line {line}: {'; '.join(errs)}")
     raise SystemExit(f"{len(bad)} bad rows — nothing imported")
 ```
+
+What buys you safety here: `DictReader` puts `None` in missing fields, so every field goes through
+a `None` guard; the header check reports a missing column once, up front, instead of a `KeyError`
+on row one; dates are validated by parsing (`2024-99-99` and `abc-def-ghi` both fail); `nan` and
+`inf` fail `math.isfinite`; and `reader.line_num` reports the file's physical line, which stays
+correct even when a quoted field spans multiple lines.
 
 The structure is the point: every row gets the same checks, `check_row` returns a list so one bad
 field does not hide the others, and the whole import refuses to proceed if anything failed. That

@@ -329,8 +329,11 @@ total = read_numbers("readings.txt")
 print(sum(total), len(total))
 ```
 
-Read it as a pipeline. `with open(...)` hands you the file one line at a time, so memory use does
-not depend on the file size. `strip()` removes the newline and any stray spaces, and the blank
+Read it as a pipeline. `with open(...)` hands you the file one line at a time, so you never hold the
+raw text in memory — but do not overclaim what that buys you: `numbers` still grows with every valid
+line, so a hundred-million-line file still eats the RAM its values need. If you only want the total
+and the count, accumulate them in the loop and drop the list entirely; that version really does run in
+constant retained memory. `strip()` removes the newline and any stray spaces, and the blank
 check afterwards ignores the lines that were only whitespace. Lines starting with `#` are treated
 as comments and skipped. `float()` converts, and the `try` around it keeps one bad line from
 killing the whole run — the `!r` in the f-string puts quotes around whatever was skipped so you can

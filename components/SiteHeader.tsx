@@ -25,6 +25,9 @@ export function SiteHeader({ searchIndex }: SiteHeaderProps) {
       <Link className="wordmark" href="/" aria-label="pyflow, home">
         pyflow<span className="wordmark__dot" aria-hidden="true" />
       </Link>
+      <nav className="header__nav" aria-label="Site">
+        <Link href="/playground">Playground</Link>
+      </nav>
       <div className="header__tools">
         <SiteSearch entries={searchIndex} />
         <ThemeToggle />

@@ -341,6 +341,118 @@ material is never committed, never served, and never mentioned anywhere in the p
   headings; descriptions still ≤170 chars). Lint and typecheck clean; build prerenders 24 routes
   with the font fetch stubbed locally as usual.
 
+### 2026-11-22 — Favicon replaced; CodeRabbit fixes from the deepening PR
+
+**Changed**
+
+- `app/icon.svg` replaced by `app/icon.png`: the Python logo as requested, letterboxed (never
+  cropped) onto a 512×512 transparent canvas. The old `pyflow` placeholder icon is gone.
+
+**Fixed** (CodeRabbit review of the deepening PR, verified against the code before fixing)
+
+- `09-organizing-files.md`: the move journal now refuses to overwrite an existing destination,
+  writes and fsyncs the intent before `os.replace`, serialises before moving (so bad values fail
+  before the file moves), uses `os.fspath`, and shows recovery that reconciles incomplete intents
+  by checking the filesystem rather than trusting the log.
+- `11-web-scraping.md`: `parse_price` rejects non-finite values with `math.isfinite`.
+- `13-pdf-and-word-documents.md`: hyphen-join removed (ambiguous compounds like `well-known` were
+  at risk; splitting words now needs an explicit, flagged trade-off); page-furniture removal only
+  deletes lines recurring across pages with page-number normalisation, ambiguous matches left for
+  review; column extraction uses `pdfplumber.extract_words()` with per-line grouping and horizontal
+  ordering, left column before right (no global `(x, y)` sort).
+- `14-csv-and-json.md`: header check up front, `None`-safe field checks, `math.isfinite` for
+  amounts, `date.fromisoformat` for calendar-valid dates, line numbers from `reader.line_num`.
+- `15-keeping-time.md`: suspended-time behaviour of `monotonic()` clarified; cron/sentinel claim
+  corrected (an invoked job plus a catch-up policy or a frequent check-and-skip is the robust
+  design — cron alone is not immune to a skipped 02:30).
+- `16-email-and-text-messages.md`: `starttls()` now takes `ssl.create_default_context()` —
+  verified that the bare default (`ssl._create_unverified_context`) does not verify the
+  certificate; this was a live credential-leak example.
+- `17-manipulating-images.md`: JPEG saves go to `<target>.tmp` first and are renamed only after
+  success; failed saves clean up so retries are possible.
+- `18-gui-automation.md`: `wait_for` catches `ImageNotFoundException` inside the polling loop;
+  `text_visible` is defined before use (real pytesseract OCR) and `click_and_check` requires an
+  on-screen change plus the expected text, defeating pre-existing-text false positives.
+- `04-lists.md`: line-by-line reading no longer overclaims constant memory (the numbers list grows;
+  constant retained memory requires accumulating in the loop). `08-reading-and-writing-files.md`:
+  divide-by-zero on an empty log fixed. `12-spreadsheets.md`: rows of all empty cells are dropped
+  before using the key column.
+
+**Verified**
+
+- All `python` fenced blocks (412) parse; lint and typecheck clean; build prerenders 24 routes
+  with the font fetch stubbed locally as usual.
+
+### 2026-11-22 — Runnable Python examples and a playground (PR #4)
+
+**Added**
+
+- `lib/pyodide.ts`: client-side Python via Pyodide (CPython→WASM), pinned to 0.27.5 and
+  fetched from the pinned CDN at first use — no npm dependency, nothing is sent to a server,
+  matching the no-server-execution stance. Runtime load is lazy (first Run click), cached by
+  the browser, and retry-safe (a failed first attempt clears the cached promise).
+- `components/PythonRunner.tsx`: the work environment — editable program, Run
+  (Ctrl/Cmd+Enter), captured stdout/stderr, Reset, Copy, Download (.py), and Open… (load a
+  .py from disk). Reads stdin via `window.prompt`; cancelling yields an empty line.
+  `variant="example"` renders inside a chapter figure; `"playground"` fills the page.
+- `components/RunnableExamples.tsx`: chapter pages render python fences as static highlighted
+  figures carrying `data-code-b64`; with JS the figures are swapped for live runners, without
+  JS the highlighted code remains. Cleanup restores the original figure HTML.
+- `lib/markdown.ts`: python code figures now emit `data-code-b64` (base64 of the raw source)
+  alongside the highlighted HTML.
+- `app/playground/page.tsx`: the separate playground page (`/playground`), now linked from the
+  header (`.header__nav` in `app/globals.css`).
+- `app/lessons/[track]/[lesson]/page.tsx`: lesson body wrapped in `RunnableExamples`.
+
+**Notes**
+
+- The Pyodide CDN could not be reached from this sandbox (network is restricted), so the
+  in-browser runtime was not executed end-to-end here. Page rendering, both static routes, and
+  the py-fence injection were verified; lint/typecheck clean; build prerenders 25 routes with
+  the font fetch stubbed locally as usual.
+- No editor dependency: the editor is a plain `<textarea>` by design (keeps the bundle small);
+  CodeMirror/Monaco would be a later, separate decision.
+- Export/import of `.py` files is client-side only (Blob download / FileReader).
+
+### 2026-11-22 — PR #4 review fixes; static export for GitHub Pages
+
+**Fixed** (CodeRabbit review of PR #4, verified against the code before fixing)
+
+- `09-organizing-files.md`: journal check is `lexists` (dangling symlinks count); the journal's
+  directory is fsynced on first write where supported; prose states the no-overwrite check is not
+  atomic and restricts the example to an exclusively controlled directory, naming `os.link`/`os.unlink`
+  and `renameat2(RENAME_NOREPLACE)` as the atomic alternatives; recovery now reconciles in reverse
+  order so chained moves (A→B then B→C) classify correctly.
+- `12-spreadsheets.md`: rows with blank keys are reported and excluded before the reconciliation
+  dictionary is built (no more silent overwrites / sorting failures).
+- `13-pdf-and-word-documents.md`: page-furniture auto-removal is one explicit rule (appears on
+  **every** page → remove; otherwise → human review; nothing in between); two-column split compares
+  word centres against a configurable `gutter`, not the page midpoint; words group into lines by a
+  3-point vertical tolerance instead of exact `top`; `lines()` no longer wrapped in `print()`.
+- `14-csv-and-json.md`: validation example imports `csv`; `15-keeping-time.md`: `monotonic()`
+  suspend behaviour documented as platform-dependent (Linux pauses, Windows includes suspend);
+  `Persistent=true` is no longer presented as a DST-gap fix (it only catches up timers that became
+  inactive) — frequent check-and-skip or a schedule that always exists is the recommendation.
+- `17-manipulating-images.md`: JPEG save passes `format="JPEG"` explicitly (`.tmp` suffix defeats
+  Pillow's extension inference); `18-gui-automation.md`: `click_and_check` refuses to claim success
+  when the expected text is already on screen before the click.
+- `lib/pyodide.ts` → execution moved into `lib/pyodide-worker.ts` (Web Worker; a synchronous
+  `while True` can no longer freeze the page). Main thread keeps a shared FIFO queue (overlapping
+  runs cannot replace each other's stream callbacks), stdout/stderr streaming, per-run stdin via
+  main-thread prompt, `stopPython()` to terminate the worker and respawn on next run (Stop button in
+  the runner), exception message kept after captured stderr, and `loadPackagesFromImports` preloads
+  wheels for detected third-party imports. `components/PythonRunner.tsx` gained the Stop button.
+
+**Added — GitHub Pages**
+
+- `next.config.ts`: `output: "export"`, `basePath: "/Python-learn-2"`, `trailingSlash: true`.
+- `.github/workflows/deploy.yml`: on push to `main` — npm ci, build, upload `out/`, deploy Pages.
+- `public/.nojekyll` so `_next/` assets are served. Build prerenders 25 routes into `out/`;
+  verified locally under a `/Python-learn-2/` mount (root, /playground/, a lesson, 404 all 200).
+- Pages must be enabled once by the owner (Settings → Pages → Source: GitHub Actions) — the
+  integration token cannot create the Pages site (403).
+- Google Fonts build fine from CI runners (no local stub needed there).
+
 ## Where things live
 
 | Path | Meaning |
