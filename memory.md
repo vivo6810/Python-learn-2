@@ -414,6 +414,45 @@ material is never committed, never served, and never mentioned anywhere in the p
   CodeMirror/Monaco would be a later, separate decision.
 - Export/import of `.py` files is client-side only (Blob download / FileReader).
 
+### 2026-11-22 — PR #4 review fixes; static export for GitHub Pages
+
+**Fixed** (CodeRabbit review of PR #4, verified against the code before fixing)
+
+- `09-organizing-files.md`: journal check is `lexists` (dangling symlinks count); the journal's
+  directory is fsynced on first write where supported; prose states the no-overwrite check is not
+  atomic and restricts the example to an exclusively controlled directory, naming `os.link`/`os.unlink`
+  and `renameat2(RENAME_NOREPLACE)` as the atomic alternatives; recovery now reconciles in reverse
+  order so chained moves (A→B then B→C) classify correctly.
+- `12-spreadsheets.md`: rows with blank keys are reported and excluded before the reconciliation
+  dictionary is built (no more silent overwrites / sorting failures).
+- `13-pdf-and-word-documents.md`: page-furniture auto-removal is one explicit rule (appears on
+  **every** page → remove; otherwise → human review; nothing in between); two-column split compares
+  word centres against a configurable `gutter`, not the page midpoint; words group into lines by a
+  3-point vertical tolerance instead of exact `top`; `lines()` no longer wrapped in `print()`.
+- `14-csv-and-json.md`: validation example imports `csv`; `15-keeping-time.md`: `monotonic()`
+  suspend behaviour documented as platform-dependent (Linux pauses, Windows includes suspend);
+  `Persistent=true` is no longer presented as a DST-gap fix (it only catches up timers that became
+  inactive) — frequent check-and-skip or a schedule that always exists is the recommendation.
+- `17-manipulating-images.md`: JPEG save passes `format="JPEG"` explicitly (`.tmp` suffix defeats
+  Pillow's extension inference); `18-gui-automation.md`: `click_and_check` refuses to claim success
+  when the expected text is already on screen before the click.
+- `lib/pyodide.ts` → execution moved into `lib/pyodide-worker.ts` (Web Worker; a synchronous
+  `while True` can no longer freeze the page). Main thread keeps a shared FIFO queue (overlapping
+  runs cannot replace each other's stream callbacks), stdout/stderr streaming, per-run stdin via
+  main-thread prompt, `stopPython()` to terminate the worker and respawn on next run (Stop button in
+  the runner), exception message kept after captured stderr, and `loadPackagesFromImports` preloads
+  wheels for detected third-party imports. `components/PythonRunner.tsx` gained the Stop button.
+
+**Added — GitHub Pages**
+
+- `next.config.ts`: `output: "export"`, `basePath: "/Python-learn-2"`, `trailingSlash: true`.
+- `.github/workflows/deploy.yml`: on push to `main` — npm ci, build, upload `out/`, deploy Pages.
+- `public/.nojekyll` so `_next/` assets are served. Build prerenders 25 routes into `out/`;
+  verified locally under a `/Python-learn-2/` mount (root, /playground/, a lesson, 404 all 200).
+- Pages must be enabled once by the owner (Settings → Pages → Source: GitHub Actions) — the
+  integration token cannot create the Pages site (403).
+- Google Fonts build fine from CI runners (no local stub needed there).
+
 ## Where things live
 
 | Path | Meaning |
