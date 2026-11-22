@@ -383,7 +383,7 @@ material is never committed, never served, and never mentioned anywhere in the p
 - All `python` fenced blocks (412) parse; lint and typecheck clean; build prerenders 24 routes
   with the font fetch stubbed locally as usual.
 
-### 2026-11-22 — Runnable Python examples and a playground
+### 2026-11-22 — Runnable Python examples and a playground (PR #4)
 
 **Added**
 
