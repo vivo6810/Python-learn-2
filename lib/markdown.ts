@@ -36,18 +36,6 @@ export function renderMarkdown(source: string): string {
     const label = language === "plaintext" ? "output" : language;
     const highlighted = highlight(code, language);
 
-    if (language === "python") {
-      // The raw source rides along base64-encoded so RunnableExamples can swap the
-      // static figure for a live, editable environment on the client. Without JS the
-      // highlighted figure still renders.
-      const b64 = Buffer.from(code, "utf8").toString("base64");
-      return [
-        `<figure class="code code--runnable" data-language="${label}" data-code-b64="${b64}">`,
-        `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`,
-        `</figure>`,
-      ].join("");
-    }
-
     return [
       `<figure class="code" data-language="${label}">`,
       `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`,

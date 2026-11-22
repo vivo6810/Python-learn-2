@@ -21,7 +21,7 @@ export default function PlaygroundPage() {
         <p className="intro__kicker">Python</p>
         <h1 className="intro__title">Playground</h1>
       </div>
-      <PythonRunner initialCode={STARTER} variant="playground" fileName="playground.py" />
+      <PythonRunner initialCode={STARTER} fileName="playground.py" />
     </div>
   );
 }
