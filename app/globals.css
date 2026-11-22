@@ -1479,3 +1479,174 @@ html.js .reveal[data-visible="true"] {
     animation: none;
   }
 }
+
+/* ---------- python work environments (runner) ---------- */
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+  margin-left: auto;
+  padding-inline: clamp(0.75rem, 2vw, 1.25rem);
+  border-left: 1px solid var(--rule);
+  height: 60%;
+}
+
+.header__nav a {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  transition: color 0.2s var(--ease-soft);
+}
+
+.header__nav a:hover {
+  color: var(--primary);
+}
+
+.pyrunner {
+  border: 1px solid var(--rule);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--code-bg);
+  margin-block: 0.5rem 1.5rem;
+}
+
+.pyrunner__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 0.6rem 0.45rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pyrunner__lang {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--code-ink, #d7deea);
+  opacity: 0.75;
+}
+
+.pyrunner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.pyrunner__btn {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #d7deea;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  padding: 0.32rem 0.62rem;
+  cursor: pointer;
+  transition: background-color 0.15s var(--ease-soft), border-color 0.15s var(--ease-soft);
+}
+
+.pyrunner__btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.pyrunner__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.pyrunner__btn--primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.pyrunner__btn--primary:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  filter: brightness(1.1);
+}
+
+.pyrunner__file {
+  display: none;
+}
+
+.pyrunner__editor {
+  display: block;
+  width: 100%;
+  border: 0;
+  resize: vertical;
+  padding: 0.85rem 1rem;
+  background: var(--code-bg);
+  color: #e8edf5;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.65;
+  tab-size: 4;
+  -moz-tab-size: 4;
+}
+
+.pyrunner__editor:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: 0;
+}
+
+.pyrunner__panel {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.55rem 1rem 0.65rem;
+  min-height: 2.1rem;
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.pyrunner__status {
+  margin: 0;
+  font-size: 0.75rem;
+  color: rgba(215, 222, 234, 0.55);
+}
+
+.pyrunner__out,
+.pyrunner__err {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: #e8edf5;
+  white-space: pre-wrap;
+}
+
+.pyrunner__err {
+  color: #ffd9d2;
+}
+
+.pyrunner__err--crash {
+  color: #ffb4a8;
+}
+
+.pyrunner--example {
+  margin-block: 1rem 1.5rem;
+}
+
+.playground .pyrunner__editor {
+  min-height: 22rem;
+}
+
+@media (max-width: 560px) {
+  .header__nav {
+    padding-inline: 0.4rem;
+    height: auto;
+    border-left: 0;
+  }
+
+  .pyrunner__btn {
+    font-size: 0.68rem;
+    padding: 0.3rem 0.5rem;
+  }
+}
