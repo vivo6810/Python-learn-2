@@ -48,6 +48,10 @@ export function markRead(key: string): void {
 let snapshot: Progress | null = null;
 
 export function subscribeProgress(listener: () => void): () => void {
+  // A new consumer must not read a snapshot cached before the subscription —
+  // events fired while nothing was subscribed did not invalidate it.
+  snapshot = null;
+
   const notify = () => {
     // The snapshot cache must not outlive the event that invalidates it.
     snapshot = null;
