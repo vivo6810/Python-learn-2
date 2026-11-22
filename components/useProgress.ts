@@ -1,21 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import {
-  EMPTY_PROGRESS,
-  readProgress,
+  getProgressServerSnapshot,
+  getProgressSnapshot,
   subscribeProgress,
   type Progress,
 } from "@/lib/progress";
 
-/** Progress lives in localStorage, so it renders empty until the client reads it. */
+/**
+ * Progress lives in localStorage, so the server snapshot is always empty and the
+ * real value arrives from the client store — no setState-in-effect needed.
+ */
 export function useProgress(): Progress {
-  const [progress, setProgress] = useState<Progress>(EMPTY_PROGRESS);
-
-  useEffect(() => {
-    setProgress(readProgress());
-    return subscribeProgress(() => setProgress(readProgress()));
-  }, []);
-
-  return progress;
+  return useSyncExternalStore(subscribeProgress, getProgressSnapshot, getProgressServerSnapshot);
 }

@@ -61,7 +61,14 @@ function readLessons(dir: string, track: string): Lesson[] {
     .readdirSync(dir)
     .flatMap((file) => {
       const match = LESSON_FILE.exec(file);
-      if (!match) return [];
+      if (!match) {
+        // A chapter file that doesn't follow the NN-slug.md contract would silently
+        // disappear from the course; refuse to build instead.
+        if (file.toLowerCase().endsWith(".md")) {
+          throw new Error(`Lesson file "${file}" in ${dir} does not match NN-slug.md`);
+        }
+        return [];
+      }
 
       const raw = fs.readFileSync(path.join(dir, file), "utf8");
       const { data, content } = matter(raw);
@@ -112,6 +119,9 @@ const loadTracks = cache((): Track[] => {
 });
 
 const loadLessons = cache((track: string): Lesson[] => {
+  // Tracks are discovered from disk; anything else is not a track, no matter
+  // what the caller passes in.
+  if (!getTracks().some((item) => item.slug === track)) return [];
   const dir = path.join(TRACKS_DIR, track);
   if (!fs.existsSync(dir)) return [];
   return readLessons(dir, track);
@@ -148,13 +158,14 @@ function describe(body: string): string {
   const first = body
     .split(/\n{2,}/)
     .map((block) => block.trim())
-    .find((block) => block && !/^(#{1,6} |```|\||>|[-*+] |\d+\. )/.test(block));
+    .find((block) => block && !/^(#{1,6} |```|\||>|[-*+] |\d+\. )/.test(block) && plainText(block));
 
   const text = plainText(first ?? "");
   if (text.length <= 170) return text;
 
   const cut = text.slice(0, 170);
-  return `${cut.slice(0, cut.lastIndexOf(" "))}…`;
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}…`;
 }
 
 function headings(body: string): string[] {
@@ -182,12 +193,14 @@ export function getSearchIndex(): SearchEntry[] {
   });
 }
 
+/** Neighbours run across part boundaries: the course is numbered continuously, so the
+ * pager follows the numbering wherever it leads. */
 export function getLessonNeighbours(
   track: string,
   lesson: string,
 ): { previous?: LessonMeta; next?: LessonMeta } {
-  const lessons = getTrack(track)?.lessons ?? [];
-  const index = lessons.findIndex((item) => item.slug === lesson);
+  const lessons = getTracks().flatMap((item) => item.lessons);
+  const index = lessons.findIndex((item) => item.track === track && item.slug === lesson);
 
   if (index === -1) return {};
 

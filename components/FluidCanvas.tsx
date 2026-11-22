@@ -66,6 +66,7 @@ export function FluidCanvas() {
     let height = 0;
     let frame = 0;
     let start = performance.now();
+    let hiddenAt: number | null = null;
     let visible = true;
 
     function resize() {
@@ -130,8 +131,16 @@ export function FluidCanvas() {
     };
 
     const onVisibility = () => {
-      visible = !document.hidden;
-      start = performance.now();
+      const hidden = document.hidden;
+      if (hidden) {
+        hiddenAt = performance.now();
+      } else if (hiddenAt !== null) {
+        // Shift the clock forward by the time the tab was hidden, so the field
+        // continues from where it paused instead of jumping to an initial frame.
+        start += performance.now() - hiddenAt;
+        hiddenAt = null;
+      }
+      visible = !hidden;
       schedule();
     };
 

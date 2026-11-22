@@ -52,6 +52,13 @@ export function SiteSearch({ entries }: SiteSearchProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
+  const [lastPathname, setLastPathname] = useState(pathname);
+
+  // Close the panel on navigation by adjusting state during render — no effect needed.
+  if (lastPathname !== pathname) {
+    setLastPathname(pathname);
+    setOpen(false);
+  }
 
   const tokens = useMemo(() => tokensOf(query), [query]);
 
@@ -65,10 +72,6 @@ export function SiteSearch({ entries }: SiteSearchProps) {
       .slice(0, MAX_RESULTS)
       .map((item) => item.entry);
   }, [entries, tokens]);
-
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -112,12 +115,13 @@ export function SiteSearch({ entries }: SiteSearchProps) {
       </label>
 
       {visible ? (
-        <div className="search__panel" role="listbox" aria-label="Chapters">
+        <div className="search__panel" role="list" aria-label="Chapters">
           {results.length ? (
             results.map((entry) => (
               <Link
                 key={`${entry.track}/${entry.slug}`}
                 className="search__hit"
+                role="listitem"
                 href={`/lessons/${entry.track}/${entry.slug}`}
                 onClick={() => setOpen(false)}
               >

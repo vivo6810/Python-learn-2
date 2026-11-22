@@ -260,6 +260,43 @@ material is never committed, never served, and never mentioned anywhere in the p
 
 - Deploy the prepared build to the Sites preview and open it in a browser.
 
+### 2026-11-21 — Bug fixes: cross-part pager, lint, no-JS reveal, theme bootstrap
+
+**Fixed**
+
+- The chapter pager now crosses part boundaries: `getLessonNeighbours` flattens the course-wide
+  numbered list instead of one part, and the pager links use the neighbour's own track (previously
+  chapter 06 had no "next" and 07 no "previous", and a cross-part link would have pointed at the
+  current track).
+- `npm run lint` works again: Next 16 removed `next lint`, so the script now runs ESLint 9 with a
+  flat config (`eslint.config.mjs`) extending `eslint-config-next` core-web-vitals and typescript.
+  Fixes required by the new `react-hooks/set-state-in-effect` rule: progress and theme state moved
+  to `useSyncExternalStore` with an invalidated snapshot cache in `lib/progress.ts`, and the search
+  panel closes on navigation by adjusting state during render. The generated
+  `freebuff.open-next.config.ts` is excluded from lint; `_body`-style omissions are allowed via
+  `ignoreRestSiblings`.
+- `.reveal` only hides content when JS is running: the theme bootstrap inline script now adds a
+  `js` class to `<html>` before paint and the `.reveal` hidden styles are scoped to `html.js`, so
+  no-JS visitors see the home page instead of a blank one.
+- `ThemeToggle` no longer throws when storage is blocked (setItem is caught) and still applies the
+  theme for the session.
+- `FluidCanvas` no longer teleports its colour fields when a tab regains focus; hidden time shifts
+  the animation clock forward instead of resetting it to zero.
+- Content validation is fail-loud: a `.md` file in a chapter folder that doesn't match `NN-slug.md`
+  now throws at build time instead of silently vanishing from the course. `loadLessons` only reads
+  tracks discovered on disk, closing the raw-param path traversal.
+- `describe()` in the search index no longer throws away the whole prefix when there is no space in
+  the first 170 chars, and skips blocks whose stripped text is empty.
+- Search panel semantics: `role="list"` with `role="listitem"` links (was `listbox` without
+  options). PLAN.md now says Next.js 16.
+
+**Verified**
+
+- `npm run typecheck` and `npm run lint` pass clean; `npx next build` passes (24 routes prerendered;
+  font fetch stubbed locally because this sandbox cannot reach Google Fonts — the deployed build is
+  unaffected). Cross-boundary neighbours, the fail-loud content guard, and search entries checked
+  with a loader probe.
+
 ## Where things live
 
 | Path | Meaning |
