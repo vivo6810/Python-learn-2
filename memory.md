@@ -313,6 +313,34 @@ material is never committed, never served, and never mentioned anywhere in the p
 - Stale-cache scenario reproduced and re-tested with a shimmed localStorage/window probe; lint and
   typecheck clean; build prerenders 24 routes (font fetch stubbed locally as usual).
 
+### 2026-11-22 — Chapter deepening pass; CodeRabbit role fix
+
+**Changed**
+
+- All eighteen chapters gained one new, substantive section in the established voice, aimed at
+  readers — plainer guidance and more complete, defensive examples — plus two new practice
+  questions each. Word count rose from 40,033 to ~45,600. New sections: an end-to-end first
+  program and reading-conditions-out-loud (01, 02); functions that work together (03); reading
+  files of lines as a pipeline (04); grouping records into buckets (05); parsing raw text into
+  fields (06); when not to reach for `re` (07); reading like a data pipeline (08); undoing a bulk
+  change with a JSONL journal (09); twenty minutes of methodical narrowing (10); defensive scraping
+  and loud failure on drift (11); reconciling two sheets (12); trustworthy text out of PDFs,
+  including NFKC normalisation (13); validating CSV/JSON at the boundary (14); choosing a clock for
+  the job (15); a sendable email template without the HTML guessing game (16); batch image jobs
+  that cannot wreck a folder (17); verifying every step, not just the clicks (18).
+
+**Fixed**
+
+- Search results `<ul>` now carries an explicit `role="list"` (CodeRabbit review on PR #2):
+  `list-style: none` drops native list semantics in WebKit, so VoiceOver would not announce the
+  list structure.
+
+**Verified**
+
+- Code fences balanced in all 18 files; search index builds 18 entries (new sections appear in
+  headings; descriptions still ≤170 chars). Lint and typecheck clean; build prerenders 24 routes
+  with the font fetch stubbed locally as usual.
+
 ## Where things live
 
 | Path | Meaning |

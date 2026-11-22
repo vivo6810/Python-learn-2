@@ -264,6 +264,46 @@ Python does not check them at runtime; `average(["a"])` still fails at the divis
 
 A function's signature is its contract, so keep it honest. If a function needs six parameters, three of which are always passed together, that trio wants to be a dictionary or a small class. If a boolean parameter changes which half of the body runs, two functions would be clearer than one with a switch inside.
 
+## Functions work together
+
+Real programs are not one function; they are a few small ones that call each other. Here is the
+whole skeleton of a text report, using nothing new.
+
+```python
+def read_totals(lines):
+    totals = []
+    for line in lines:
+        name, _, amount = line.rpartition(" ")
+        totals.append((name, float(amount)))
+    return totals
+
+def format_row(name, amount):
+    return f"{name:<12} {amount:>8.2f}"
+
+def report(lines):
+    rows = read_totals(lines)
+    for name, amount in rows:
+        print(format_row(name, amount))
+    print(f"{'total':<12} {sum(a for _, a in rows):>8.2f}")
+
+report(["tea 3.50", "coffee 4.25", "scones 6.00"])
+```
+
+Read the shape, not just the lines. Each function has one job: `read_totals` turns messy text into
+a clean list of `(name, amount)` pairs, `format_row` decides how a row looks, and `report` glues
+them and owns the loop. That separation is what makes the program testable — you can call
+`read_totals(["tea 3.50"])` on its own and check the answer without printing anything.
+
+Notice what the caller does and does not care about: `report` never looks inside `read_totals`, and
+`read_totals` never decides how to print. When a function knows exactly one thing, you can change
+one function at a time. Compare that with the single forty-line script that reads, formats, and
+prints in one block — every change anywhere in it requires rereading the whole thing.
+
+Two design rules fall out of this. First, keep the I/O (printing, input) at the edges and the logic
+in the middle, because logic with no I/O is the part you can verify quickly. Second, pass data in
+and get values out — a function with no parameters and no return value is a conversation with the
+global state, and those are the hardest functions to move.
+
 ## Doubts worth settling
 
 **What is the difference between a parameter and an argument?** The parameter is the name inside
@@ -325,3 +365,5 @@ an exception, which is a contract worth writing down in the docstring.
 - Write `area(width, height=1)` and call it both ways.
 - Write `ask_number(prompt)` that loops until the input converts, then returns the integer.
 - Write a function that takes a list and returns its average, raising `ValueError` on an empty list.
+- Write three functions — `load`, `format`, `report` — and compose them into a tiny receipt printer.
+- Take a long script you have written and split it at the points where you can give them names.

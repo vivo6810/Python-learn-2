@@ -310,6 +310,46 @@ A cleaning pass should be idempotent: running it on already-clean data changes n
 
 Finally, keep the raw file. Cleaned data is a claim about the original; when the numbers look wrong a week later, the original is the only way to tell whether the cleaning was at fault.
 
+## Validating data at the boundary
+
+Every CSV and JSON file that arrives from the outside world is a promise, not a fact. Fields may
+be missing, numbers may arrive as strings, and dates may be in any of six formats. The cheaper
+mistake happens at the border: check each record as it enters the program, and keep the interior
+clean.
+
+```python
+def check_row(row):
+    errors = []
+    if not row["name"].strip():
+        errors.append("empty name")
+    try:
+        row["amount"] = float(row["amount"])
+    except (KeyError, ValueError):
+        errors.append(f"bad amount: {row.get('amount')!r}")
+    if row.get("date", "").count("-") != 2:
+        errors.append(f"date not YYYY-MM-DD: {row.get('date')!r}")
+    return errors
+
+with open("invoices.csv", newline="", encoding="utf-8") as handle:
+    rows = list(csv.DictReader(handle))
+
+bad = [(i, check_row(r)) for i, r in enumerate(rows, start=2)]
+bad = [(i, errs) for i, errs in bad if errs]
+if bad:
+    for line, errs in bad:
+        print(f"line {line}: {'; '.join(errs)}")
+    raise SystemExit(f"{len(bad)} bad rows — nothing imported")
+```
+
+The structure is the point: every row gets the same checks, `check_row` returns a list so one bad
+field does not hide the others, and the whole import refuses to proceed if anything failed. That
+is deliberate — importing the good rows and ignoring the bad creates a silent partial file, which
+is worse than no file at all because nobody notices the gap until the totals do not match.
+
+Report line numbers against the file as opened, so a colleague can jump straight to the problem.
+Keep the validator as a function so the same rules protect the next import, and unit-test it on one
+good row and one bad row each — the cheapest tests in the whole pipeline.
+
 ## Doubts worth settling
 
 **Why does `csv.reader` split on commas inside quotes correctly?** Because it understands quoting
@@ -367,3 +407,5 @@ another list, so memory stays flat even for a large file.
 - Convert a JSON list of records into a CSV with one column per key.
 - Add a `total` key to each record in a JSON file and save it back with indentation.
 - Write a function that turns a CSV into JSON Lines, one object per line.
+- Write a `check_row` validator for a purchases CSV: non-empty name, numeric amount, ISO date — and list the bad line numbers.
+- Compare importing a 10k-row CSV with and without boundary validation and explain where the time went.

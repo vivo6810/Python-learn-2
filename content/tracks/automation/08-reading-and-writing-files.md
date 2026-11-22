@@ -303,6 +303,42 @@ print(path)   # e.g. /tmp/tmp8k2j1.csv, yours to move or delete
 
 Two rules make temporary files safe. Move the finished file into place with `os.replace()`, which is atomic on the same filesystem; and keep the temporary file in the destination directory, not in `/tmp`, so the move stays on one filesystem. `tempfile.mkstemp(dir=folder)` does exactly that, and it is the difference between a reader seeing the old report or the new one — never half of each.
 
+## Reading like a data pipeline
+
+Most scripts that touch a file are the same three moves: open the file, walk it one line at a
+time, keep the bits that matter. Doing it this way instead of `read()`ing the whole file keeps
+memory flat no matter how big the input gets, and it makes the program's shape visible.
+
+```python
+def count_errors(path):
+    errors = 0
+    total = 0
+    with open(path, encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            total += 1
+            if line.startswith("ERROR"):
+                errors += 1
+    return errors, total
+
+errors, total = count_errors("server.log")
+print(f"{errors} errors in {total} lines ({errors / total:.1%})")
+```
+
+The loop variable is a line, newline included, so everything you do with it usually starts with
+`line.strip()`. `errors="replace"` is a pragmatic choice for log files you did not create: a
+single corrupt byte should not stop a count of ten thousand lines, and the replacement character
+shows up exactly where the damage is.
+
+That same skeleton generalises directly: filter the lines with `if`, transform them with a method
+or a function, accumulate into a list, counter, or dictionary. If a file needs more than one pass,
+say so in a comment at the top, open it twice, and let each pass be obviously simple. Clever
+one-pass programs that interleave two jobs are where subtle miscounts hide.
+
+The one rule that never changes: never catch the exception by ignoring the file instead. An
+empty file and an unreadable file must not look the same to the caller, so check
+`path.exists()` / let the `open` raise, and let the program fail loudly with a message that names
+the file.
+
 ## Doubts worth settling
 
 **Where does a relative path point?** At the current working directory, which is the folder you
@@ -360,3 +396,5 @@ lines the way a person counts them.
 - Count the words in a text file without loading it entirely into memory.
 - Save a dictionary with `shelve`, reopen it in a second run, and print one key.
 - Write `write_atomic` and confirm a crash mid-write leaves the old file intact.
+- Count the ERROR and WARNING lines in a large log file without loading it into memory, printing a percentage.
+- Write a function that returns the three longest lines of a file, one pass only, and explain why the approach runs in constant memory.

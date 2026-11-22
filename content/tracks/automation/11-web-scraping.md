@@ -296,6 +296,36 @@ That is a real browser, with the weight and fragility of one. Use it when there 
 
 Three checks before writing a scraper: does the site publish an API, does `robots.txt` allow the path, and do the terms forbid automated access. A request every second is a denial-of-service attack with polite intentions; a delay, a cache, and a limit on pages fetched are part of a working scraper, not extra credit.
 
+## Defensive scraping: expect the page to change
+
+A scraper that worked yesterday can fail silently tomorrow: the class name gets renamed, the
+endpoint goes behind a token, or the markup is restructured. The defense is not a miracle
+library — it is a small set of checks that turn silent drift into a loud, fixable failure.
+
+```python
+def parse_price(text):
+    text = text.strip().replace(",", "").removeprefix("$")
+    return float(text)   # raises ValueError on garbage, not later
+
+def scrape(html):
+    soup = BeautifulSoup(html, "html.parser")
+    cards = soup.select(".product-card")
+    if not cards:
+        raise RuntimeError("no .product-card found — page structure may have changed")
+    return [parse_price(card.select_one(".price").get_text()) for card in cards]
+```
+
+Notice what this buys you. `parse_price` fails at the moment of parsing, with the offending text
+in the exception, rather than propagating `nan` into a spreadsheet. The `if not cards` guard means
+a changed selector produces one clear error instead of an empty CSV that looks like success.
+Checking `response.status_code` before parsing is the same discipline at the network layer.
+
+Keep a cached copy of every page you scrape — one file per URL, keyed by hash — and point the
+parser at the cache while developing. You iterate against a stable input, and when the live page
+changes you notice because the cache and the network disagree, which is exactly the signal you
+want. On a schedule, assert the row count is sane against the previous run; a scrape that suddenly
+returns 12 rows instead of 120 is a page change, not a smaller catalogue.
+
 ## Doubts worth settling
 
 **Why does `requests.get` return 403?** The site refused the request, often because the headers look
@@ -354,3 +384,5 @@ blocked.
 - Save a page's text to a file, then count the most common words in it.
 - Fetch two pages of a listing with a one-second pause and combine their rows into one CSV.
 - Cache a page, then re-run the script offline and confirm it still works.
+- Add an `if not cards: raise RuntimeError(...)` guard to a scraper and confirm it fails loudly when the selector no longer matches.
+- Make `parse_price` raise on a malformed price, then feed it three bad inputs and read the errors.

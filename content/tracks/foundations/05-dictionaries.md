@@ -268,6 +268,52 @@ print(Counter(row["city"] for row in rows).most_common())
 
 That generator expression is the pattern to remember: feed `Counter` the thing you want counted, not the container it lives in.
 
+## Grouping records into buckets
+
+The pattern from `setdefault` scales up to a whole file of records: walk the records once, and
+collect each into a list under its key. It is the dictionary version of sorting a pile of papers by
+colour.
+
+```python
+records = [
+    ("invoice", "1001"),
+    ("refund", "1002"),
+    ("invoice", "1003"),
+    ("refund", "1004"),
+]
+
+by_type = {}
+for kind, number in records:
+    by_type.setdefault(kind, []).append(number)
+
+for kind, numbers in by_type.items():
+    print(kind, "->", ", ".join(numbers))
+```
+
+```plaintext
+invoice -> 1001, 1003
+refund -> 1002, 1004
+```
+
+Two properties make this worth knowing by heart. It runs in a single pass, so it stays fast on a
+large file, and it preserves the order in which each group first appeared, which is the order you
+usually want to report in. When you need the groups sorted instead, sort the keys at print time —
+do not pre-sort the input, because that buys nothing here.
+
+The grouped dictionary is also the natural input to a second aggregation: counts, totals, or the
+largest item per group. Compute those from `by_type` rather than re-walking the records, and the
+program reads in two clear phases: group, then summarise.
+
+```python
+summary = {kind: len(numbers) for kind, numbers in by_type.items()}
+print(summary)   # {'invoice': 2, 'refund': 2}
+```
+
+When the grouping key itself needs to be computed — by month, by file extension, by the first
+character — the `setdefault` line does not change; only the expression you index with does. That is
+the whole technique, and it is the workhorse behind "for each X, the Ys" questions in almost every
+script that touches real data.
+
 ## Doubts worth settling
 
 **`KeyError` or `get`?** Indexing says the key must exist and fails loudly if it does not. `get`
@@ -327,3 +373,5 @@ diff a file.
 - Store three people, each with a name and a list of hobbies, then print everyone who lists `"chess"`.
 - Build an index of words to the line numbers they appear on, using `setdefault`.
 - Add a `total` key to every inner dictionary of an inventory and pretty-print the result.
+- Group a list of `(country, city)` pairs into a dictionary of lists and print only groups with more than one entry.
+- Load a file of `word count` lines and print the total word count per first letter using `setdefault`.
