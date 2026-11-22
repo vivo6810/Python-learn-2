@@ -1105,14 +1105,16 @@ html[data-theme="dark"] .toggle__moon {
 
 /* ---------- reveal on scroll ---------- */
 
-.reveal {
+/* Hidden only when JS is running (the theme bootstrap adds .js to <html> before paint);
+   without JS the content must remain visible. */
+html.js .reveal {
   opacity: 0;
   transform: translateY(28px);
   filter: blur(4px);
   transition: opacity 1s var(--ease), transform 1s var(--ease), filter 1s var(--ease);
 }
 
-.reveal[data-visible="true"] {
+html.js .reveal[data-visible="true"] {
   opacity: 1;
   transform: none;
   filter: none;
@@ -1465,7 +1467,7 @@ html[data-theme="dark"] .toggle__moon {
     transition-duration: 0.001ms !important;
   }
 
-  .reveal {
+  html.js .reveal {
     opacity: 1;
     transform: none;
     filter: none;

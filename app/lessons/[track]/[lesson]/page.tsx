@@ -52,7 +52,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
 
         <nav className="pager" aria-label="Chapters">
           {previous ? (
-            <Link className="pager__link" href={`/lessons/${track.slug}/${previous.slug}`}>
+            <Link className="pager__link" href={`/lessons/${previous.track}/${previous.slug}`}>
               <span className="pager__label">Chapter {String(previous.chapter).padStart(2, "0")}</span>
               <span className="pager__title">{previous.title}</span>
             </Link>
@@ -60,7 +60,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
             <span className="pager__spacer" />
           )}
           {next ? (
-            <Link className="pager__link pager__link--next" href={`/lessons/${track.slug}/${next.slug}`}>
+            <Link className="pager__link pager__link--next" href={`/lessons/${next.track}/${next.slug}`}>
               <span className="pager__label">Chapter {String(next.chapter).padStart(2, "0")}</span>
               <span className="pager__title">{next.title}</span>
             </Link>

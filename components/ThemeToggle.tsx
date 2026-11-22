@@ -1,25 +1,46 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark";
+
+const THEME_EVENT = "pyflow:theme";
 
 function currentTheme(): Theme {
   return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
-export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("light");
+function subscribeTheme(listener: () => void): () => void {
+  window.addEventListener(THEME_EVENT, listener);
+  window.addEventListener("storage", listener);
+  return () => {
+    window.removeEventListener(THEME_EVENT, listener);
+    window.removeEventListener("storage", listener);
+  };
+}
 
-  useEffect(() => {
-    setTheme(currentTheme());
-  }, []);
+function getThemeSnapshot(): Theme {
+  return currentTheme();
+}
+
+function getThemeServerSnapshot(): Theme {
+  return "light";
+}
+
+export function ThemeToggle() {
+  // The theme itself lives on <html data-theme>, written before paint by the inline
+  // bootstrap script; this just reflects it.
+  const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getThemeServerSnapshot);
 
   function toggle() {
-    const next: Theme = currentTheme() === "dark" ? "light" : "dark";
+    const next: Theme = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
-    localStorage.setItem("theme", next);
-    setTheme(next);
+    try {
+      localStorage.setItem("theme", next);
+    } catch {
+      // Storage can be blocked; the theme still applies for this session.
+    }
+    window.dispatchEvent(new Event(THEME_EVENT));
   }
 
   return (

@@ -43,16 +43,35 @@ export function markRead(key: string): void {
   }
 }
 
+// Cached snapshot for useSyncExternalStore: must return a stable reference
+// between invalidations, so reading localStorage on every call is not OK.
+let snapshot: Progress | null = null;
+
 export function subscribeProgress(listener: () => void): () => void {
-  const onStorage = (event: StorageEvent) => {
-    if (event.key === null || event.key === READ_KEY || event.key === LAST_KEY) listener();
+  const notify = () => {
+    // The snapshot cache must not outlive the event that invalidates it.
+    snapshot = null;
+    listener();
   };
 
-  window.addEventListener(EVENT, listener);
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === READ_KEY || event.key === LAST_KEY) notify();
+  };
+
+  window.addEventListener(EVENT, notify);
   window.addEventListener("storage", onStorage);
 
   return () => {
-    window.removeEventListener(EVENT, listener);
+    window.removeEventListener(EVENT, notify);
     window.removeEventListener("storage", onStorage);
   };
+}
+
+export function getProgressSnapshot(): Progress {
+  if (snapshot === null) snapshot = readProgress();
+  return snapshot;
+}
+
+export function getProgressServerSnapshot(): Progress {
+  return EMPTY_PROGRESS;
 }

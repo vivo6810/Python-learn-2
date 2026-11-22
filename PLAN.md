@@ -17,7 +17,7 @@ what each line does, then practice questions. The prose is written for this site
 
 | Topic | Decision |
 | --- | --- |
-| Framework | Next.js 15 App Router, React 19, TypeScript strict |
+| Framework | Next.js 16 App Router, React 19, TypeScript strict |
 | Rendering | Static generation (`generateStaticParams`); no database, no API routes |
 | Content | `content/tracks/<track>/<NN>-<slug>.md` with YAML frontmatter, plus `track.json` |
 | Markdown | `gray-matter` for frontmatter, `marked` for HTML, `highlight.js` for code |
