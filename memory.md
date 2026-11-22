@@ -453,6 +453,14 @@ material is never committed, never served, and never mentioned anywhere in the p
   integration token cannot create the Pages site (403).
 - Google Fonts build fine from CI runners (no local stub needed there).
 
+### 2026-11-22 — README and GitHub Pages publishing docs
+
+- Added `README.md`: what the site is, requirements, content layout, static export notes
+  (basePath tied to the repo name), and the one-time Pages setup (Settings → Pages → Source:
+  GitHub Actions) needed before the workflow can deploy.
+- First `Deploy to GitHub Pages` run (on the PR #4 merge) failed at `actions/configure-pages`
+  exactly because Pages is not enabled yet; re-running it after the toggle is the fix.
+
 ## Where things live
 
 | Path | Meaning |
