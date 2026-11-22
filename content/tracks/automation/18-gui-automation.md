@@ -331,6 +331,8 @@ def text_visible(screenshot, text):
 def click_and_check(target_image, expect_text):
     box = wait_for(target_image, timeout=15)
     before = pyautogui.screenshot()
+    if text_visible(before, expect_text):
+        raise RuntimeError(f"{expect_text!r} is already on screen; the click cannot be confirmed — pick a result region that only appears on success")
     pyautogui.click(box)
     deadline = time.time() + 5
     while time.time() < deadline:
@@ -344,9 +346,12 @@ def click_and_check(target_image, expect_text):
 
 Two details make that check honest. `text_visible` is defined before it is used — it runs OCR with
 pytesseract (a working extractor, not a placeholder), so `expect_text` is what the screen actually
-shows, case-insensitively. And the `changed` gate means the expected text can no longer confirm
-success when it was already on screen before the click: the screen has to change *and* show the
-text. If OCR is not an option, compare a small known result region instead of the whole screen —
+shows, case-insensitively. And the precondition makes pre-existing text impossible to mistake for success: if the expected
+text is already visible before the click, the function refuses to claim the click worked, because
+a clock tick or a stray redraw could otherwise satisfy the `changed` gate and OCR would happily
+read the old text back. The honest fix is to point the check at the region that only *transitions*
+on success (e.g. the status area showing "Saved"), or use an operation-specific indicator — a pixel
+that flips, a dialog that opens. If OCR is not an option, compare a small known result region instead of the whole screen —
 `pyautogui.pixelMatchesColor` on a key pixel or `locateOnScreen` on the region are enough — or
 compare before/after screenshots and assert they differ in the expected area.
 

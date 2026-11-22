@@ -318,6 +318,7 @@ mistake happens at the border: check each record as it enters the program, and k
 clean.
 
 ```python
+import csv
 import math
 from datetime import date
 

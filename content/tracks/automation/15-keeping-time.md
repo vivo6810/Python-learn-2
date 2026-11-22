@@ -350,18 +350,23 @@ Use neither for the wall calendar inside a long-running process that cares about
 never runs on the morning the clocks spring forward — the wall time does not exist. A sentinel file
 recording the last successful run only helps when the job is *invoked*; cron (or any scheduler)
 cannot run a job whose time slot never happened, and on the morning the clock jumps, 02:30 simply
-does not exist. Two designs actually survive it: a scheduler configured to catch up missed runs
-(e.g. a systemd timer with `Persistent=true`), or a job invoked at a safe frequent time (say every
-ten minutes) that checks the sentinel and decides whether the real work is due — the check-and-skip
+does not exist. Two designs actually survive it. The first is a job invoked at a safe frequent time (say every ten
+minutes) that checks the sentinel and decides whether the real work is due — the check-and-skip
 pattern is immune to DST jumps, restarts, and missed slots because it never depends on the clock
-passing through a particular value.
+passing through a particular value. The second is simply a schedule whose wall-clock time always
+exists (e.g. 03:30 instead of 02:30, which skips the gap). Do **not** reach for a systemd timer
+with `Persistent=true` as the answer here: `Persistent` only catches up a timer that became
+inactive and was later reactivated (machine off, timer stopped) — it does not make an *active*
+timer fire a calendar event that never occurred during the spring-forward gap, so a daily 02:30
+timer can still be skipped.
 
-A countdown timer built from `time.monotonic()` does not count time the machine spends suspended
-(on Linux, `CLOCK_MONOTONIC` pauses during suspend), so a ten-second countdown takes ten seconds
-of awake machine time — close enough for a bench test, but not "ten seconds of wall time" if you
-close a laptop halfway through. If the deadline must track the real clock across suspend, use
-`time.time()` for the deadline and compare against the epoch instead; `time.sleep()` alone is
-never a timer, just a hint.
+Suspend behaves differently depending on the platform. On Linux, `CLOCK_MONOTONIC` pauses during
+suspend, so a countdown built from `time.monotonic()` takes its ten seconds of *awake* time — put
+the laptop to sleep for an hour and the countdown resumes where it left off. On Windows, CPython
+uses `QueryPerformanceCounter`, which *includes* time spent suspended, so the same ten-second
+countdown can already be expired when the machine wakes. Measure don't assume: if the deadline must
+track the real clock across suspend, use `time.time()` for the deadline and compare against the
+epoch instead; `time.sleep()` alone is never a timer, just a hint.
 
 A countdown timer built from `time.time()` and checked in a loop behaves the same everywhere and
 survives suspend; one built from `sleep()` calls loses drift with every iteration. If accuracy

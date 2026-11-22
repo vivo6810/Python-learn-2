@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { runPython } from "@/lib/pyodide";
+import { runPython, stopPython } from "@/lib/pyodide";
 
 export type PythonRunnerProps = {
   /** Code shown on first render; Reset restores it. */
@@ -98,9 +98,20 @@ export function PythonRunner({ initialCode, variant = "example", fileName = "exa
       <div className="pyrunner__toolbar">
         <span className="pyrunner__lang">python</span>
         <div className="pyrunner__actions">
-          <button type="button" className="pyrunner__btn pyrunner__btn--primary" onClick={() => void run()} disabled={running}>
-            {running ? "Running…" : "Run"}
-          </button>
+          {running ? (
+            <button
+              type="button"
+              className="pyrunner__btn pyrunner__btn--primary"
+              onClick={() => stopPython()}
+              title="Terminate the run"
+            >
+              Stop
+            </button>
+          ) : (
+            <button type="button" className="pyrunner__btn pyrunner__btn--primary" onClick={() => void run()}>
+              Run
+            </button>
+          )}
           <button type="button" className="pyrunner__btn" onClick={reset} title="Restore the original example">
             Reset
           </button>

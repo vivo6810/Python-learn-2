@@ -424,10 +424,12 @@ produced a suspiciously long word — that is cheaper than silently wrong text.
 
 Repeated headers and footers are easier to drop after extraction, but dropping by "first and last
 line of every page" alone will also delete unique body text that happens to open or close a page.
-Only auto-remove lines that *recur* across pages: collect the first and last few lines of each
-page, keep the candidates that appear on most pages, normalising page-number variation (e.g. replace
-digits with `#`), and remove those. Leave anything ambiguous — a line that appears on some but not
-all pages — for a person to review rather than deleting it outright.
+Only auto-remove lines that *recur* across pages, and make the rule one explicit threshold, not a
+judgement call: collect the first and last few lines of each page, normalise page-number variation
+(e.g. replace digits with `#`), and auto-remove only the candidates that appear on **every page of
+the document**. Every remaining candidate that recurs on *some but not all* pages goes to human
+review — nothing between. The two rules are mutually exclusive: above the threshold it is furniture
+and dies automatically; below it a person decides, and nothing in between is deleted on its own.
 
 Two-column layouts need coordinate-based extraction rather than text flow. `extract_words()` is
 `pdfplumber`'s API, so the two-column job needs `pdfplumber`, not a `pypdf` page:
@@ -435,27 +437,38 @@ Two-column layouts need coordinate-based extraction rather than text flow. `extr
 ```python
 import pdfplumber
 
-def column_text(path):
+def column_text(path, gutter=None):
     with pdfplumber.open(path) as pdf:
         for page in pdf.pages:
             words = page.extract_words()
-            midpoint = page.width / 2
+            # The gutter is not necessarily the page midpoint; pass it in for
+            # asymmetric pages, or eyeball it from the page geometry once.
+            gutter = gutter if gutter is not None else page.width / 2
             columns = {"left": [], "right": []}
             for word in words:
-                side = "left" if (word["x0"] + word["x1"]) / 2 < midpoint else "right"
+                side = "left" if (word["x0"] + word["x1"]) / 2 < gutter else "right"
                 columns[side].append(word)
             for side in ("left", "right"):          # left column first, then right
-                print(lines(columns[side]))
+                lines(columns[side])                 # prints; returns nothing
 
 def lines(words):
-    rows = {}
-    for word in words:
-        key = round(word["top"], 1)                # words on the same line share a y
-        rows.setdefault(key, []).append(word)
-    for key in sorted(rows):                        # top to bottom
-        line = sorted(rows[key], key=lambda w: w["x0"])   # left to right within the line
+    rows = []                                       # list of [anchor_top, [words]]
+    for word in sorted(words, key=lambda w: w["top"]):
+        if rows and abs(word["top"] - rows[-1][0]) <= 3:   # same visual line
+            rows[-1][1].append(word)
+        else:
+            rows.append([word["top"], [word]])
+    for _anchor, line_words in rows:                # top to bottom
+        line = sorted(line_words, key=lambda w: w["x0"])   # left to right within the line
         print(" ".join(w["text"] for w in line))
 ```
+
+Two details matter there. The column split compares each word's centre against the *gutter* —
+the boundary between the columns — not automatically the page midpoint, which is wrong for an
+asymmetric layout like a 600-point page with a gutter at x=350; pass `gutter` explicitly whenever
+it differs from half the width. And words are grouped into lines by a vertical tolerance (3 points)
+rather than an exact rounded `top`, because adjacent words on one visual line rarely share a bounding
+box top exactly; exact-key grouping prints the slightly higher word on a later line.
 
 Grouping words into lines by vertical position first is what `extract_text()` cannot do for you:
 a plain `(x, y)` sort would put a low word at the left margin above a high word on the right,

@@ -295,26 +295,56 @@ def journal_path():
     return f"undo-{stamp}.json"
 
 def move_with_journal(moves, journal):
+    directory = os.path.dirname(os.path.abspath(journal))
+    journal_dir_synced = False
     with open(journal, "a", encoding="utf-8") as handle:
         for source, target in moves:
-            if os.path.exists(target):
+            if os.path.lexists(target):   # lexists: a dangling symlink also counts as existing
                 raise FileExistsError(f"{target} exists; refusing to overwrite")
             record = json.dumps({"from": os.fspath(source), "to": os.fspath(target)})
             handle.write(record + "\n")
             handle.flush()
             os.fsync(handle.fileno())   # persisted before the move happens
+            if not journal_dir_synced:
+                try:      # sync the directory entry too — the journal file's name must survive a crash
+                    dir_fd = os.open(directory, getattr(os, "O_DIRECTORY", 0))
+                    try:
+                        os.fsync(dir_fd)
+                    finally:
+                        os.close(dir_fd)
+                    journal_dir_synced = True
+                except OSError:
+                    pass    # platform does not allow fsync on a directory; the file sync still stands
             os.replace(source, target)
 ```
 
 Two rules make the journal trustworthy. First, the record is written *before* the move and
-durable (`flush` + `fsync`), not appended after it — so a crash between the two never produces a
-silent unjournaled move. Second, the destination is never overwritten: if `target` exists the
-move refuses instead of destroying data the journal could not restore.
+durable (`flush` + `fsync` on the file, and on the journal's directory where the platform supports
+it, so the journal's name itself survives a crash — without that, the move can survive while the
+journal is lost). Second, the destination is never overwritten: if `target` exists — including as a
+dangling symlink, which is why the check is `lexists`, not `exists` — the move refuses instead of
+destroying data the journal could not restore.
+
+One limit is worth stating out loud: that check is not atomic. Between the check and `os.replace`
+another process could create the target, and the rename would silently replace it. For a bulk
+rename this example assumes a directory the script exclusively controls — no concurrent writers.
+If you cannot assume that, use an atomic no-replace primitive instead: `os.link(source, target)`
+followed by `os.unlink(source)` fails cleanly if the target appeared (hard links refuse to replace),
+at the cost of two filesystem operations and same-filesystem moves — or reach for
+`os.renameat2`'s `RENAME_NOREPLACE` where the platform exposes it. If another process creating files
+is a real possibility in your workflow, that is the level of paranoia to buy.
 
 That means a crash can leave an *incomplete intent*: a line in the journal whose move never
 happened. Recovery reconciles by asking the filesystem, not the log — for each recorded move,
 if the source exists and the target does not, the move never happened and the line is discarded;
 if the target exists and the source does not, the move happened and the line is kept for undo.
+One shape needs care: chained moves. If `A → B` ran and later `B → C` ran, a completed run leaves
+both `A` and `B` absent, so the first record's source *and* target are both missing — a plain
+forward scan cannot classify it. Walk the records newest-first (the reverse of the file); record
+`B → C` is then undone (`C → B`) before `A → B` is considered, so `B` exists again when record one
+is examined. Reversing the journal backwards, the same way undo already reads it, makes every
+record classifiable without trusting the log alone. If you will not process in reverse, restrict
+the input instead: forbid any move whose target is an earlier record's source or target.
 Serialize before moving also means a `TypeError` from a bad value fails the journal write before
 the file moves, not after.
 

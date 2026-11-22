@@ -358,7 +358,7 @@ for source in folder.glob("*.jpg"):
     try:
         with Image.open(source) as img:
             img.thumbnail((1600, 1600))
-            img.convert("RGB").save(tmp, quality=85)
+            img.convert("RGB").save(tmp, format="JPEG", quality=85)
         os.replace(tmp, target)   # rename only after the save succeeded
     except Exception:
         tmp.unlink(missing_ok=True)   # no half-written target left behind
@@ -371,7 +371,7 @@ failed run never leaves a truncated `target` behind — the `exists()` skip stay
 the script simply retries the failed files. `os.replace` is atomic on the same filesystem.
 
 `thumbnail` mutates the image in place and always preserves the aspect ratio, which is what you
-want for previews. Converting to `RGB` before saving JPEG matters because images with alpha or
+want for previews. `format="JPEG"` is explicit because the temporary file ends in `.tmp`, and Pillow infers the format from the file extension — without it the save raises `ValueError` and no image is produced. Converting to `RGB` before saving JPEG matters because images with alpha or
 palette modes cannot be stored as JPEG, and the error message for that is easy to misdiagnose.
 Run the whole thing once on a three-image sample folder before pointing it at the real one.
 
