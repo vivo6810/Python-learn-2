@@ -115,27 +115,27 @@ export function SiteSearch({ entries }: SiteSearchProps) {
       </label>
 
       {visible ? (
-        <div className="search__panel" role="list" aria-label="Chapters">
+        <ul className="search__panel" aria-label="Chapters">
           {results.length ? (
             results.map((entry) => (
-              <Link
-                key={`${entry.track}/${entry.slug}`}
-                className="search__hit"
-                role="listitem"
-                href={`/lessons/${entry.track}/${entry.slug}`}
-                onClick={() => setOpen(false)}
-              >
-                <span className="search__hit-num">{String(entry.chapter).padStart(2, "0")}</span>
-                <span className="search__hit-body">
-                  <span className="search__hit-title">{highlight(entry.title, tokens)}</span>
-                  <span className="search__hit-desc">{highlight(entry.description, tokens)}</span>
-                </span>
-              </Link>
+              <li className="search__item" key={`${entry.track}/${entry.slug}`}>
+                <Link
+                  className="search__hit"
+                  href={`/lessons/${entry.track}/${entry.slug}`}
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="search__hit-num">{String(entry.chapter).padStart(2, "0")}</span>
+                  <span className="search__hit-body">
+                    <span className="search__hit-title">{highlight(entry.title, tokens)}</span>
+                    <span className="search__hit-desc">{highlight(entry.description, tokens)}</span>
+                  </span>
+                </Link>
+              </li>
             ))
           ) : (
-            <p className="search__empty">No chapters</p>
+            <li className="search__empty">No chapters</li>
           )}
-        </div>
+        </ul>
       ) : null}
     </div>
   );

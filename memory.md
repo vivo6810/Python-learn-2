@@ -297,6 +297,22 @@ material is never committed, never served, and never mentioned anywhere in the p
   unaffected). Cross-boundary neighbours, the fail-loud content guard, and search entries checked
   with a loader probe.
 
+### 2026-11-22 — Review follow-ups: search list semantics, fresh progress on subscribe
+
+**Fixed**
+
+- Search results: `role="listitem"` moved off the link onto a wrapping `<li>`; the panel is now a
+  native `<ul>` with hidden markers instead of a `role="list"` div, so the links keep their link
+  role. (Review comment.)
+- `subscribeProgress` clears the cached snapshot when a listener subscribes, so a consumer that
+  mounts after an event fired with no subscribers reads current progress instead of stale cached
+  data. Notification and unsubscribe behaviour unchanged. (Review comment.)
+
+**Verified**
+
+- Stale-cache scenario reproduced and re-tested with a shimmed localStorage/window probe; lint and
+  typecheck clean; build prerenders 24 routes (font fetch stubbed locally as usual).
+
 ## Where things live
 
 | Path | Meaning |

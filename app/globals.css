@@ -1232,6 +1232,8 @@ html.js .reveal[data-visible="true"] {
 
 .search__panel {
   position: absolute;
+  margin: 0;
+  list-style: none;
   top: calc(100% + 0.6rem);
   right: 0;
   width: min(30rem, calc(100vw - 2.5rem));
